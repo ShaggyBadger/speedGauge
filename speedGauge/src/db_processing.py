@@ -73,37 +73,46 @@ def update_ids():
 	console.clear()
 	print('New driver_ids found.')
 	for i in new_ids:
-		print(i)
+		if i != None:
+			sql = f'SELECT * FROM driverInfo WHERE driver_id = ?'
+			value = (i,)
+			c.execute(sql, value)
+			result = c.fetchone()
+			if result == None:
+				sql = f'SELECT * FROM {settings.tbl_name} WHERE driver_id = ?'
+				value = (i,)
+				c.execute(sql, value)
+				result = c.fetchone()
+				driver_name = result[1]
+				driver_id = i
+				sql = f'INSERT INTO driverInfo (driver_id, driverName) VALUES (?, ?)'
+				values = (driver_name, driver_id)
+				c.execute(sql, values)
+				conn.commit()
 	
 	# make sure to change from str to 
 	# int
 	id_dict = {}
 	for i in new_ids:
-		sql = f'SELECT driver_id FROM {settings.tbl_name} WHERE driver_id = ?'
-		value = (i,)
-		c.execute(sql, value)
-		result = c.fetchone()
-		if result != None:
-			cleaned_id = int(float(result[0]))
-			id_dict[result[0]] = cleaned_id
+		if i != None:
+			cleaned_id = int(float(i))
+			id_dict[i] = cleaned_id
 	
 	for i in id_dict:
 		sql = f'UPDATE {settings.tbl_name} SET driver_id = ? WHERE driver_id = ?'
 		values = (id_dict[i], i)
+		c.execute(sql, values)
 	
 	conn.commit()
+	sql = f'PRAGMA table_info(speedGaugeData);'
+	c.execute(sql)
+	result = c.fetchall()
+	for i in result:
+		print(i)
+
+
 	conn.close()
 	return id_list
-
-
-
-
-
-
-
-
-
-
 
 def fill_missing_speeds():
 	conn = db_connection()

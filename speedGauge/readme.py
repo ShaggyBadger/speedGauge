@@ -44,5 +44,15 @@ outlier intel. possible columns:
 	peer_average
 	driver_speed
 	standard_devations_from_average
-	
+
+to use this file in the vscode on my computer, make sure to add a console.py file in the virtual environment.
+go to virtualenvionment foler / lib / site-packages and put the file there.
+
+Have the file put a funcion like this:
+
+def clear():
+	os.system('cls' if os.name == 'nt' else 'clear')
+
+this fixes  the problem that happens when you try to do console.clear()
+on the phone and it works, but there is not console module in python.
 '''

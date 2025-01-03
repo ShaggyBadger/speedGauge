@@ -1,6 +1,9 @@
 # Ignore the virtual environment directory
 venvFiles/
 
+# Ignore vs code settings
+.vscode
+
 # Ignore Python bytecode
 *.pyc
 __pycache__/

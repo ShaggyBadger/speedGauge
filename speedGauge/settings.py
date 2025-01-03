@@ -72,4 +72,3 @@ up_arrow = '&#x2191;'
 down_arrow = '&#x2193;'
 
 tbl_name = 'speedGaugeData'
-
