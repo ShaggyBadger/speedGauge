@@ -369,5 +369,3 @@ def mv_completed_file(file_path):
 			# Move the file to the destination path with the updated name
 			os.rename(file_path, dest_path)
 			print(f"File moved to: {dest_path}")
-
-	

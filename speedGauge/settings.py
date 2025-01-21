@@ -1,5 +1,6 @@
 # settings.py
 import os
+import sqlite3
 
 
 '''
@@ -71,4 +72,10 @@ swto_blue = '#0b3e69'
 up_arrow = '&#x2191;'
 down_arrow = '&#x2193;'
 
-tbl_name = 'speedGaugeData'
+tbl_name = 'speedGaugeData2'
+
+def db_connection():
+	# returns a connection
+	dbName = DB_PATH
+	conn = sqlite3.connect(dbName)
+	return conn

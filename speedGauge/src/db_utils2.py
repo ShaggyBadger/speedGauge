@@ -69,7 +69,7 @@ def get_max_date():
 	the database
 	'''
 	
-	tbl = 'speedGaugeData'
+	tbl = settings.tbl_name
 	conn = db_connection()
 	
 	c = conn.cursor()
@@ -95,7 +95,7 @@ def get_all_dates():
 	the database
 	'''
 	
-	tbl = 'speedGaugeData'
+	tbl = settings.tbl_name
 	date_list = []
 	
 	conn = db_connection()
@@ -180,7 +180,7 @@ def gather_driver_data(id_list, date):
 	
 	print('Gathering driver data...')
 	
-	tbl = 'speedGaugeData'
+	tbl = settings.tbl_name
 	data_packets = []
 	#max_date = get_max_date()
 	conn = db_connection()
@@ -233,7 +233,7 @@ def gather_historical_driver_data(id_list):
 	'''
 	print('Gathering historical driver data...')
 	
-	tbl = 'speedGaugeData'
+	tbl = settings.tbl_name
 	stats = []
 	date_list = get_all_dates()
 	
@@ -284,8 +284,3 @@ def get_info(driver_id):
 	result = c.fetchone()
 	for i in result:
 		print(i)
-
-
-	
-	
-

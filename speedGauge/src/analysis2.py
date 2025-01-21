@@ -42,6 +42,9 @@ def weekly_stats_analysis(data_packets, data_packets2, date):
 	speed_list.sort()
 	speed_list2.sort()
 	
+		# get standard deviation
+	stdev = statistics.stdev(speed_list)
+	
 	# get the median and mean
 	median = statistics.median(speed_list)
 	avg = statistics.mean(speed_list)
@@ -64,14 +67,9 @@ def weekly_stats_analysis(data_packets, data_packets2, date):
 	round_median_change = f'{round(median_change, 2)}'
 	round_avg_change = f'{round(avg_change, 2)}'
 	
-	# get standard deviation
-	stdev = statistics.stdev(speed_list)
-	
 	# updata data_packets with stdev
 	for dict in data_packets:
-		# determine how many standard 
-		# deviations from the mean this
-		# driver is at
+		# determine how many standard deviations from the mean this driver is at
 		percent_speeding = dict['percent_speeding']
 		num_std_devs = math.floor(abs(percent_speeding - avg) / stdev) + 1
 		
@@ -220,17 +218,3 @@ def print_stats(data_package, scope):
 			print(f'Distance past high-range IQR: {dict["percent_speeding"] - stats["high_range_iqr"]}\n')
 		
 	print('*****PRINTOUT COMPLETE*****\n')
-		
-	
-	
-	
-	
-	
-	
-	
-	
-
-
-	
-
-

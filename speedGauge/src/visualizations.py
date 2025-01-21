@@ -241,7 +241,3 @@ def historic_median(data_packet):
 	plt.legend()
 
 	return plt
-		
-		
-	
-

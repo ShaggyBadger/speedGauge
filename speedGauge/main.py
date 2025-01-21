@@ -3,10 +3,13 @@ import os
 from src import data_processing
 from src import db_utils
 from src import analysis
+from src import analysis3
 from src import visualizations
+from src import visualizations2
 from src import db_utils2
 from src import analysis2
 from src import processing2
+from src import processing3
 from src import reports
 from src import individualDriver
 from src import idrReport
@@ -42,9 +45,6 @@ def idr(enter_driver=True, driver_id=30150643):
 		data_package = individualDriver.main(enter_driver=False, driver_num=driver_id, print_out=True)
 		
 		idrReport.generate_report(data_package['stats'])
-
-
-
 
 
 
@@ -266,7 +266,9 @@ def driver_analysis(manager='chris'):
 
 
 
-
+def weekly_analysis():
+	analysis = analysis3.build_analysis()
+	plt_paths = visualizations2.controller(analysis)
 
 
 
@@ -277,6 +279,8 @@ def driver_analysis(manager='chris'):
 
 
 def run_program():
+	folder_path = settings.UNPROCESSED_PATH
+	files = os.listdir(folder_path)
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
@@ -290,8 +294,7 @@ def run_program():
 	
 	console.clear()
 	if str(selection) == str(1):
-		for file in files:
-			process_spreadsheet(file)
+		processing3.main()
 	
 	elif str(selection) == str(2):
 		run_weekly_analyis()
@@ -299,17 +302,11 @@ def run_program():
 	
 	elif str(selection) == str(3):
 		idr()
-
-
- 
 	
-folder_path = settings.UNPROCESSED_PATH
-files = os.listdir(folder_path)
 
-
-
-run_program()
+#run_program()
 #run_weekly_analyis()
+weekly_analysis()
 ids = {
 	1201619: 'rodrick',
 	30199025: 'perkins',
@@ -322,3 +319,4 @@ ids = {
 	30202984: 'john r'
 	
 	}
+

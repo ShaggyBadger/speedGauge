@@ -475,4 +475,3 @@ def create_report(stats_package, scope, plt_paths):
 	
 
 	doc.build(content)
-

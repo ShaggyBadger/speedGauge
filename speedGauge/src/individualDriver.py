@@ -848,8 +848,3 @@ relevent_col_names = {
 	'start_date': 'Worst Incident Start Date',
 	'end_date': 'Worst Incident End Date',
 	}
-	
-	
-	
-		
-		

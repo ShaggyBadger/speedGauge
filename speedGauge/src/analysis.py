@@ -593,19 +593,3 @@ def full_rtm_stats(rtm='chris'):
 	}
 	
 	return bundled_data
-	
-	
-
-	
-
-
-	
-	
-	
-	
-
-
-
-	
-	
-	
