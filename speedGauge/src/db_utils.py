@@ -16,6 +16,7 @@ from src import analysis
 list of functions:
 ------------------
 
+build_db
 get_driver_ids
 get_max_date
 display_tbl_info
@@ -35,6 +36,9 @@ stats_over_time
 
 '''
 
+
+def build_db():
+	conn = settings.db_connection()
 
 
 
@@ -147,10 +151,11 @@ def display_tbl_info(tbl='speedGaugeData'):
 	results = c.fetchall()
 	print(f'\n{tbl}\n-----')
 	for i in results:
-			print(i[1])
-
-
-
+		col_name = i[1]
+		col_type = i[2]
+		
+		print(f"'{col_name}': '{col_type}',")
+	
 
 
 
@@ -970,8 +975,9 @@ def build_driver_package(rtm='chris'):
 
 
 if __name__ == '__main__':
-
-	display_tbl_info(tbl='driverInfo')
+	display_tbl_info(tbl='driverInfo2')
+	display_tbl_info('speedGaugeData2')
+	build_db()
 	#display_tbl_info()
 	
 	#display_driver_speed()

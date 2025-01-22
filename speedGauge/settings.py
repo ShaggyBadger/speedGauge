@@ -1,17 +1,19 @@
 # settings.py
 import os
 import sqlite3
+import Path
 
 
 '''
 establish paths to various 
 directories for use in other parts of
 da program
+
+TODO: change os.path to Path objects
 '''
 
 # root directory
 BASE_DIR = os.path.dirname(__file__)
-
 IMG_PATH = os.path.join(BASE_DIR, 'images')
 
 REPORTS_PATH = os.path.join(BASE_DIR, 'reports')
@@ -40,17 +42,36 @@ DB_PATH = os.path.join(DATABASE_PATH, 'speedGauge.db')
 
 # column names and types for db
 # not sure if i should include id
-db_column_intel = {
+
+# aka driverInfo
+driverInfoTbl_column_info = {
+	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
 	'driver_name': 'TEXT',
-	'percent_speeding': 'INTEGER',
+	'driver_id': 'INTEGER',
+	'rtm': 'TEXT'
+	'terminal': 'TEXT',
+	'shift': 'TEXT'
+}
+
+# aka speedGaugeData
+mainTbl_column_intel = {
+	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
+	'driver_name': 'TEXT',
+	'vehicle_type': 'TEXT',
+	'percent_speeding': 'REAL',
 	'max_speed_non_interstate_freeway': 'REAL',
 	'percent_speeding_non_interstate_freeway': 'REAL',
 	'max_speed_interstate_freeway': 'REAL',
 	'percent_speeding_interstate_freeway': 'REAL',
+	'worst_incident_date': 'TEXT',
 	'incident_location': 'TEXT',
 	'speed_limit': 'INTEGER',
 	'speed': 'INTEGER',
+	'speed_cap': 'TEXT',
+	'custom_speed_restriction': 'TEXT',
 	'distance_driven': 'INTEGER',
+	'driver_id': 'INTEGER',
+	'url': 'TEXT',
 	'location': 'TEXT',
 	'percent_speeding_numerator': 'REAL',
 	'percent_speeding_denominator': 'REAL',
@@ -60,8 +81,14 @@ db_column_intel = {
 	'observations_non_interstate_freeway': 'REAL',
 	'difference': 'INTEGER',
 	'start_date': 'TEXT',
-	'end_date': 'TEXT'
+	'end_date': 'TEXT',
+	'formated_start_date': 'TEXT',
+	'formated_end_date': 'TEXT',
+	'human_readable_start_date': 'TEXT',
+	'human_readable_end_date': 'TEXT',
+	'percent_speeding_source': 'TEXT'
 	}
+
 	
 red = '#ff2400'
 green = '#03ac13'
@@ -74,6 +101,11 @@ down_arrow = '&#x2193;'
 
 tbl_name = 'speedGaugeData2'
 
+# univeral refrence source. handy.
+speedGaugeData_tbl = 'speedGaugeData'
+driverInfo_tbl = 'driverInfo'
+
+# super common call. put this here so everyone can use it
 def db_connection():
 	# returns a connection
 	dbName = DB_PATH
