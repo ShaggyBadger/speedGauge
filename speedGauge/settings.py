@@ -5,44 +5,37 @@ import Path
 
 
 '''
-establish paths to various 
-directories for use in other parts of
-da program
-
-TODO: change os.path to Path objects
+establish paths to various  directories for use in other parts of da program
 '''
 
 # root directory
-BASE_DIR = os.path.dirname(__file__)
-IMG_PATH = os.path.join(BASE_DIR, 'images')
+BASE_DIR = Path(__file__).parent
 
-REPORTS_PATH = os.path.join(BASE_DIR, 'reports')
+# Main directories inside root
+IMG_PATH = BASE_DIR / 'images'
+REPORTS_PATH = BASE_DIR / 'reports'
 
-IMG_ASSETS_PATH = os.path.join(IMG_PATH, 'assets')
-
-WEEKLY_REPORTS_PATH = os.path.join(IMG_PATH, 'weeklyReports')
-
-# path to data i.e. the csv files
-DATA_PATH = os.path.join(BASE_DIR, 'data')
+# Nested directories
+IMG_ASSETS_PATH = IMG_PATH / 'assets'
+WEEKLY_REPORTS_PATH = IMG_PATH / 'weeklyReports'
+DATA_PATH = BASE_DIR / 'data'
 
 # path to unprocessed directory
-UNPROCESSED_PATH = os.path.join(DATA_PATH, 'unprocessed')
+UNPROCESSED_PATH = DATA_PATH / 'unprocessed'
 
 # path to processed directory
-PROCESSED_PATH = os.path.join(DATA_PATH, 'processed')
+PROCESSED_PATH = DATA_PATH / 'processed'
 
 # path to src directory
-SRC_PATH = os.path.join(BASE_DIR, 'src')
+SRC_PATH = BASE_DIR / 'src'
 
 # path to database directory
-DATABASE_PATH = os.path.join(BASE_DIR, 'database')
+DATABASE_PATH = BASE_DIR / 'database'
 
 # path to actual speedGuage.db
-DB_PATH = os.path.join(DATABASE_PATH, 'speedGauge.db')
+DB_PATH = DATABASE_PATH / 'speedGauge.db'
 
-# column names and types for db
-# not sure if i should include id
-
+'''column names and types for db not sure if I should include id'''
 # aka driverInfo
 driverInfoTbl_column_info = {
 	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
@@ -89,7 +82,7 @@ mainTbl_column_intel = {
 	'percent_speeding_source': 'TEXT'
 	}
 
-	
+# easy color reference
 red = '#ff2400'
 green = '#03ac13'
 warning_orange = '#ffbc37'
@@ -99,6 +92,7 @@ swto_blue = '#0b3e69'
 up_arrow = '&#x2191;'
 down_arrow = '&#x2193;'
 
+# prob gonna change this to something more better soon
 tbl_name = 'speedGaugeData2'
 
 # univeral refrence source. handy.
@@ -107,7 +101,7 @@ driverInfo_tbl = 'driverInfo'
 
 # super common call. put this here so everyone can use it
 def db_connection():
-	# returns a connection
+	# returns a db connection
 	dbName = DB_PATH
 	conn = sqlite3.connect(dbName)
 	return conn
