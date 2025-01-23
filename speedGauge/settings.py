@@ -1,7 +1,7 @@
 # settings.py
 import os
 import sqlite3
-import Path
+from pathlib import Path
 
 
 '''
@@ -41,15 +41,16 @@ driverInfoTbl_column_info = {
 	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
 	'driver_name': 'TEXT',
 	'driver_id': 'INTEGER',
-	'rtm': 'TEXT'
+	'rtm': 'TEXT',
 	'terminal': 'TEXT',
 	'shift': 'TEXT'
 }
 
 # aka speedGaugeData
-mainTbl_column_intel = {
+mainTbl_column_info = {
 	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
 	'driver_name': 'TEXT',
+	'driver_id': 'INTEGER',
 	'vehicle_type': 'TEXT',
 	'percent_speeding': 'REAL',
 	'max_speed_non_interstate_freeway': 'REAL',
@@ -63,7 +64,6 @@ mainTbl_column_intel = {
 	'speed_cap': 'TEXT',
 	'custom_speed_restriction': 'TEXT',
 	'distance_driven': 'INTEGER',
-	'driver_id': 'INTEGER',
 	'url': 'TEXT',
 	'location': 'TEXT',
 	'percent_speeding_numerator': 'REAL',
@@ -93,11 +93,11 @@ up_arrow = '&#x2191;'
 down_arrow = '&#x2193;'
 
 # prob gonna change this to something more better soon
-tbl_name = 'speedGaugeData2'
+#tbl_name = 'speedGaugeData2'
 
 # univeral refrence source. handy.
-speedGaugeData_tbl = 'speedGaugeData'
-driverInfo_tbl = 'driverInfo'
+speedGaugeData = 'speedGaugeData'
+driverInfo = 'driverInfo'
 
 # super common call. put this here so everyone can use it
 def db_connection():

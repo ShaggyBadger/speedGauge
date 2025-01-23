@@ -1,18 +1,13 @@
 import sys, os
 from pathlib import Path
+import pandas as pd
+import re
+from datetime import datetime
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Now you can import settings
 import settings
-import numpy as np
-import pandas as pd
-import re
-from datetime import datetime
-import shutil
-import console
-import statistics
-
 
 def mv_completed_file(dict_list, file_path):
 	'''
@@ -149,7 +144,7 @@ def clean_data(dict_list):
 			# if no id, try to find one
 			conn = settings.db_connection()
 			c = conn.cursor()
-			sql = f'SELECT driver_id FROM driverInfo2 WHERE driver_name = ?'
+			sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE driver_name = ?'
 			value = (dict['driver_name'],)
 
 			c.execute(sql, value)
@@ -182,24 +177,24 @@ def update_db(dict_list):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
-	'''update driverInfo2'''
+	'''update driverInfo'''
 	# organize dict info
 	for dict in dict_list:
 		driver_id = dict['driver_id']
 		driver_name = dict['driver_name']
 		
 		# check db for driver_id
-		sql = f'SELECT driver_id FROM driverInfo2 WHERE driver_id = ?'
+		sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE driver_id = ?'
 		value = (driver_id,)
 		c.execute(sql, value)
 		result = c.fetchone()
 		
 		# if id not in db, add it
 		if result == None:
-			sql = f'INSERT INTO driverInfo2 (driver_name, driver_id) VALUES (?, ?)'
+			sql = f'INSERT INTO {settings.driverInfo} (driver_name, driver_id) VALUES (?, ?)'
 			values = (driver_name, driver_id)
 			print(f'Found new driver_id in dataset. Adding driver to database:\n{driver_id} - {driver_name}\ndriver_id type: {type(driver_id)}')
-			selection = input('\nFound driver not in driverInfo2. should we add it? y/n: ')
+			selection = input('\nFound driver not in driverInfo table. should we add it? y/n: ')
 			if selection == 'y':
 				c.execute(sql, values)
 
@@ -248,33 +243,6 @@ def update_db(dict_list):
 			
 	conn.commit()
 	conn.close()
-	
-def reset_driverInfo2():
-	'''
-	this will delete all records from
-	driverInfo2 where rtm is not chris
-	
-	useful if im screwing around and mess the table up
-	'''
-	tbl = 'driverInfo2'
-	rtm = 'chris'
-	conn = settings.db_connection()
-	c = conn.cursor()
-	
-	sql = f'SELECT * FROM {tbl}'
-	c.execute(sql)
-	results = c.fetchall()
-	
-	to_save = []
-	to_delete = []
-	
-	for result in results:
-		if result[3] == rtm:
-			to_save.append(result[0])
-		else:
-			to_delete.append(result[0])
-	
-	conn.close()
 
 def update_driverInfo2(file_name):
 	'''
@@ -282,7 +250,7 @@ def update_driverInfo2(file_name):
 	'''
 	conn = settings.db_connection()
 	c = conn.cursor()
-	tbl = 'driverInfo2'
+	tbl = settings.driverInfo
 	
 	folder_path = Path(settings.PROCESSED_PATH)
 	
@@ -333,7 +301,7 @@ def get_driver_dates(driver_id):
 	math magic later with polynomial
 	interpolation
 	'''
-	tbl = 'driverInfo2'
+	tbl = settings.driverInfo
 	tbl2 = 'speedGaugeData2'
 
 	conn = settings.db_connection()
@@ -363,7 +331,7 @@ def get_driver_dates(driver_id):
 def generate_missing_speed(driver_id, poly_degree=2):
 	conn = settings.db_connection()
 	c = conn.cursor()
-	tbl1 = 'driverInfo2'
+	tbl1 = settings.driverInfo
 	tbl2 = 'speedGaugeData2'
 	
 	filtered_dates = get_driver_dates(driver_id)
@@ -429,7 +397,7 @@ def generate_missing_speed(driver_id, poly_degree=2):
 def update_missing_speeds(print_errors=False):
 	conn = settings.db_connection()
 	c = conn.cursor()
-	tbl1 = 'driverInfo2'
+	tbl1 = settings.driverInfo
 	tbl2 = 'speedGaugeData2'
 	driver_id_list = []
 	
@@ -534,23 +502,22 @@ def interpolated_gen_report():
 def processing_summary():
 	conn = settings.db_connection()
 	c = conn.cursor()
-	tbl1 = 'driverInfo2'
-	tbl2 = settings.tbl_name
+	tbl1 = settings.driverInfo
+	tbl2 = settings.speedGaugeData
 	
 	# retreive latest date from db
 	sql = f'SELECT MAX(start_date) FROM {tbl2}'
 	c.execute(sql)
 	result = c.fetchone()
 	max_date = result[0]
-	print(f'\nProcessing summary for week starting {max_date}')
-	print('------------------\n')
+	max_date_printout = f'\nProcessing summary for week starting {max_date}\n------------------\n'
 	
 	# find how many insertions for latest week
 	sql = f'SELECT * FROM {tbl2} WHERE start_date = ?'
 	value = (max_date,)
 	c.execute(sql, value)
 	results = c.fetchall()
-	print(f'Total number of insertions: {len(results)}\n')
+	insertion_count_printout = f'Total number of insertions: {len(results)}\n'
 
 	
 	# find how many insertions were interpolated
@@ -558,12 +525,12 @@ def processing_summary():
 	value = (max_date, 'generated')
 	c.execute(sql, value)
 	results = c.fetchall()
-	print(f'Total number of interpolated insertions: {len(results)}')
+	interpolated_insertions_printout = f'Total number of interpolated insertions: {len(results)}'
 
+	return max_date_printout + insertion_count_printout + interpolated_insertions_printout
 
 def main():
-	folder_path = Path(settings.UNPROCESSED_PATH)
-	files = os.listdir(folder_path)
+	folder_path = settings.UNPROCESSED_PATH
 	
 	for file in folder_path.iterdir():
 		if file.is_file():
@@ -586,7 +553,8 @@ def main():
 			update_missing_speeds()
 			
 			# print out a summary
-			processing_summary()
+			summary = processing_summary()
+			print(summary)
 		
 
 
