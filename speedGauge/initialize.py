@@ -1,5 +1,6 @@
 import settings
 import sqlite3
+import json
 from pathlib import Path
 from src import processing3
 import console
@@ -55,10 +56,50 @@ def build_db():
 
 	conn.commit()
 	conn.close()
+	
+	print('\n\nInitial setup complete')
 
 def populate_db():
 	'''takes in all the spreadsheets and puts them into the database'''
-	processing3.main()
+	conn = settings.db_connection()
+	c = conn.cursor()
+	counter = 0
+	
+	# read the json file for driverInfo
+	with open(settings.SRC_PATH / 'driver_info.json', 'r') as f:
+		driver_data = json.load(f)
+	
+	# process driver data
+	for driver in driver_data:
+		driver_name = driver[0]
+		driver_id = driver[1]
+		rtm = driver[2]
+		
+		columns = 'driver_name, driver_id, rtm'
+		placeholders = '?, ?, ?'
+		
+		sql = f'SELECT * FROM {settings.driverInfo} WHERE driver_id = ?'
+		value = (driver_id,)
+		c.execute(sql, value)
+		result = c.fetchone()
+		
+		if result == None:
+			sql = f'INSERT OR REPLACE INTO {settings.driverInfo} ({columns}) VALUES ({placeholders})'
+			values = (driver_name, driver_id, rtm)
+			c.execute(sql, values)
+		
+			counter += 1
+	
+	conn.commit()
+	c.execute(f'SELECT * FROM {settings.driverInfo}')
+	results = c.fetchall()
+	conn.close()
+	
+	print(f'\nEntered {counter} drivers from file into db table.\n\nTotal drivers in table: {len(results)}')
+	
+	processing3.main(initializer=True)
+	processing3.update_missing_speeds()
+	processing3.interpolated_gen_report()
 
 def special_ops():
 	pass

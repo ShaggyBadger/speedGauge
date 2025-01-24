@@ -502,24 +502,24 @@ def interpolated_gen_report():
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
-	sql = f'SELECT * FROM {settings.tbl_name} WHERE percent_speeding_source = ?'
+	sql = f'SELECT * FROM {settings.speedGaugeData} WHERE percent_speeding_source = ?'
 	
 	value = ('generated',)
 	c.execute(sql, value)
 	results = c.fetchall()
 	print(f'number of db entries that have a generated percent speeding: {len(results)}')
 
-	sql = f'SELECT * FROM {settings.tbl_name} WHERE driver_id IS NULL'
+	sql = f'SELECT * FROM {settings.speedGaugeData} WHERE driver_id IS NULL'
 	c.execute(sql)
 	results = c.fetchall()
 	print(f'NUM OF NULL DRIVERS: {len(results)}')
 	
 	print('Deleting any entries with NULL values...\n')
-	sql = f'DELETE FROM {settings.tbl_name} WHERE driver_name IS NULL'
+	sql = f'DELETE FROM {settings.speedGaugeData} WHERE driver_name IS NULL'
 	c.execute(sql)
 	conn.commit()
 	
-	sql = f'SELECT * FROM {settings.tbl_name} WHERE driver_id IS NULL'
+	sql = f'SELECT * FROM {settings.speedGaugeData} WHERE driver_id IS NULL'
 	c.execute(sql)
 	results = c.fetchall()
 	print(f'NUM OF NULL DRIVERS: {len(results)}')
@@ -556,7 +556,11 @@ def processing_summary():
 
 	return max_date_printout + insertion_count_printout + interpolated_insertions_printout
 
-def main():
+def main(initializer=False):
+	'''
+	initialize is set to true if this is a clean build from clones repo. 
+	This is part of the intialize.py file
+	'''
 	folder_path = settings.UNPROCESSED_PATH
 	
 	for file in folder_path.iterdir():
@@ -577,7 +581,9 @@ def main():
 			mv_completed_file(cleaner_data, file)
 			
 			# search for and update any missing speeds
-			update_missing_speeds()
+			if initializer is False:
+				update_missing_speeds()
+				interpolated_gen_report()
 			
 			# print out a summary
 			summary = processing_summary()

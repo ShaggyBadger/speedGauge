@@ -289,6 +289,7 @@ def insert_data(dict, tbl):
 		tbl_columns = [result[1] for result in results]
 		
 		if column not in tbl_columns:
+			print(f'Encountered new column in the spreadsheet: {column}. Inserting into database table')
 			c.execute(f'ALTER TABLE {tbl} ADD COLUMN {column} TEXT')
 			
 	conn.commit()
