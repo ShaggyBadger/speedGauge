@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import re
 from datetime import datetime
+import console
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -173,7 +174,7 @@ def clean_data(dict_list):
 	return sanitized_dict_list
 
 def update_db(dict_list):
-	tbl = 'speedGaugeData2'
+	tbl = settings.speedGaugeData
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
@@ -193,7 +194,10 @@ def update_db(dict_list):
 		if result == None:
 			sql = f'INSERT INTO {settings.driverInfo} (driver_name, driver_id) VALUES (?, ?)'
 			values = (driver_name, driver_id)
-			print(f'Found new driver_id in dataset. Adding driver to database:\n{driver_id} - {driver_name}\ndriver_id type: {type(driver_id)}')
+			print(
+				f'Found new driver_id in dataset. Adding driver to database:'
+		 		f'\n{driver_id} - {driver_name}\ndriver_id type: {type(driver_id)}'
+				)
 			selection = input('\nFound driver not in driverInfo table. should we add it? y/n: ')
 			if selection == 'y':
 				c.execute(sql, values)
@@ -201,10 +205,10 @@ def update_db(dict_list):
 	conn.commit()
 	
 	
-	'''---update speedGaugeData2---'''
+	'''---update speedGaugeData---'''
 	
 	# check if dict column is in tbl
-	sql = 'PRAGMA table_info(speedGaugeData2)'
+	sql = f'PRAGMA table_info({settings.speedGaugeData})'
 	c.execute(sql)
 	results = c.fetchall()
 	col_names = []
@@ -215,7 +219,30 @@ def update_db(dict_list):
 	# update table if needed
 	for col in sample_dict:
 		if col not in col_names:
-			c.execute(f'ALTER TABLE speedGaugeData2 ADD COLUMN {col} COLUMN TYPE TEXT')
+			valid_input = False
+			while valid_input is False:
+				console.clear()
+				print(f'New column detected. Column name: {col}')
+				message = (
+					f'We have located a new column in the spreadsheet that is not in the database. '
+					f'Please select which type of column it should be in the database...\n'
+					f'1. TEXT\n'
+					f'2. INTEGER\n'
+					f'3. REAL\n'
+					f'Enter your selection: '
+					)
+				user_input = input(message)
+				input_options = {
+					f'1': 'TEXT',
+					f'2': 'INTEGER',
+					f'3': 'REAL'
+				}
+				if str(user_input) in input_options:
+					valid_input = True
+			sql = (
+				f'ALTER TABLE {settings.speedGaugeData} ADD COLUMN {col} {input_options[str(user_input)]}'
+			)
+			c.execute(sql)
 			conn.commit()
 	
 	
@@ -226,7 +253,7 @@ def update_db(dict_list):
 		start_date = dict['start_date']
 		
 		# check if this driver already has an entry for this date
-		sql = f'SELECT * FROM speedGaugeData2 WHERE driver_id = ? AND start_date = ?'
+		sql = f'SELECT * FROM {settings.speedGaugeData} WHERE driver_id = ? AND start_date = ?'
 		values = (driver_id, start_date)
 		
 		c.execute(sql, values)
@@ -302,7 +329,7 @@ def get_driver_dates(driver_id):
 	interpolation
 	'''
 	tbl = settings.driverInfo
-	tbl2 = 'speedGaugeData2'
+	tbl2 = settings.speedGaugeData
 
 	conn = settings.db_connection()
 	c = conn.cursor()
@@ -332,7 +359,7 @@ def generate_missing_speed(driver_id, poly_degree=2):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	tbl1 = settings.driverInfo
-	tbl2 = 'speedGaugeData2'
+	tbl2 = settings.speedGaugeData
 	
 	filtered_dates = get_driver_dates(driver_id)
 	speeds = []
@@ -398,7 +425,7 @@ def update_missing_speeds(print_errors=False):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	tbl1 = settings.driverInfo
-	tbl2 = 'speedGaugeData2'
+	tbl2 = settings.speedGaugeData
 	driver_id_list = []
 	
 	# get list of drivers

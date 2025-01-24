@@ -2,6 +2,7 @@ import settings
 import sqlite3
 from pathlib import Path
 from src import processing3
+import console
 
 '''
 this module is meant to run when making a clone or a branch or whatever. it will make the directories that
@@ -59,8 +60,28 @@ def populate_db():
 	'''takes in all the spreadsheets and puts them into the database'''
 	processing3.main()
 
-if __name__ == '__main__':
-	#build_db()
+def special_ops():
 	pass
+
+if __name__ == '__main__':
+	valid_selection = False
+	while valid_selection is False:
+		console.clear()
+		valid_selections = ['1', '2', '3']
+		print('Welcome to the speedGauge initializer module! Please select what option you want to use....\n')
+		selection = input('1: Build The Database\n2: Populate The Database\nEnter selection: ')
+		if str(selection) in valid_selections:
+			valid_selection = True
+		else:
+			print('Sorry, your selection was not a valid selection. Please try again...')
+			input('\nPress enter to contine...')
+	if selection == '1':
+		build_dirs()
+		build_db()
+	if selection == '2':
+		populate_db()
+	if selection == '3':
+		special_ops()
+	
 
 	
