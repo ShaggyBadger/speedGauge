@@ -1,3 +1,9 @@
+to set up virtual environment:
+	python3 -m venv venvFiles
+	
+	this will put all the virtual environment stuff into the venvFiles
+
+
 ok, to use the virtual environment, use:
     source venvFiles/bin/activate
 
