@@ -44,7 +44,7 @@ def get_manager(driver_id):
 	conn = db_connection()
 	c = conn.cursor()
 	
-	tbl = 'driverInfo'
+	tbl = settings.driverInfo
 	
 	sql = f'SELECT manager FROM {tbl} WHERE driver_id = ?'
 	value = (driver_id,)
@@ -69,7 +69,7 @@ def get_max_date():
 	the database
 	'''
 	
-	tbl = settings.tbl_name
+	tbl = settings.speedGaugeData
 	conn = db_connection()
 	
 	c = conn.cursor()
@@ -95,7 +95,7 @@ def get_all_dates():
 	the database
 	'''
 	
-	tbl = settings.tbl_name
+	tbl = settings.speedGaugeData
 	date_list = []
 	
 	conn = db_connection()
@@ -136,7 +136,7 @@ def gather_driver_ids(rtm='chris'):
 	c = conn.cursor()
 	
 	if rtm != 'none':
-		sql = f'SELECT driver_id FROM driverInfo WHERE rtm = ? '
+		sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE rtm = ? '
 		value = (rtm,)
 		
 		c.execute(sql, value)
@@ -146,7 +146,7 @@ def gather_driver_ids(rtm='chris'):
 			id_list.append(result[0])
 	
 	else:
-		sql = f'SELECT driverNumber FROM driverInfo'
+		sql = f'SELECT driver_id FROM {settings.driverInfo}'
 		
 		c.execute(sql)
 		results = c.fetchall()
@@ -180,7 +180,7 @@ def gather_driver_data(id_list, date):
 	
 	print('Gathering driver data...')
 	
-	tbl = settings.tbl_name
+	tbl = settings.speedGaugeData
 	data_packets = []
 	#max_date = get_max_date()
 	conn = db_connection()
@@ -233,7 +233,7 @@ def gather_historical_driver_data(id_list):
 	'''
 	print('Gathering historical driver data...')
 	
-	tbl = settings.tbl_name
+	tbl = settings.speedGaugeData
 	stats = []
 	date_list = get_all_dates()
 	
@@ -275,7 +275,7 @@ def gather_historical_driver_data(id_list):
 def get_info(driver_id):
 	conn = db_connection()
 	c = conn.cursor()
-	tbl = 'driverInfo'
+	tbl = settings.driverInfo
 	
 	sql = f'SELECT * FROM {tbl} WHERE driver_id = ?'
 	value = (driver_id,)

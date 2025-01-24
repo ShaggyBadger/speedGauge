@@ -156,7 +156,7 @@ def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
 
 	conn = settings.db_connection()
 	c = conn.cursor()
-	tbl = settings.tbl_name
+	tbl = settings.speedGaugeData
 	
 	company_ids = []
 	rtm_ids = []
@@ -167,7 +167,7 @@ def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
 	# get rtm and company driver ids
 	company_ids = []
 	rtm_ids = []
-	sql = f'SELECT DISTINCT driver_id, rtm FROM driverInfo2'
+	sql = f'SELECT DISTINCT driver_id, rtm FROM {settings.driverInfo}'
 	c.execute(sql)
 	results = c.fetchall()
 	for result in results:
@@ -215,7 +215,7 @@ def get_date_list():
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
-	sql = f'SELECT DISTINCT start_date FROM {settings.tbl_name} ORDER BY start_date DESC'
+	sql = f'SELECT DISTINCT start_date FROM {settings.speedGaugeData} ORDER BY start_date DESC'
 	c.execute(sql)
 	results = c.fetchall()
 	

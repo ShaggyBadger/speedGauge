@@ -304,9 +304,9 @@ def run_program():
 		idr()
 	
 
-#run_program()
+run_program()
 #run_weekly_analyis()
-weekly_analysis()
+#weekly_analysis()
 ids = {
 	1201619: 'rodrick',
 	30199025: 'perkins',
