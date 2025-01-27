@@ -231,7 +231,7 @@ def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
 		else:
 			driver_name = None
 		
-		sql = f'SELECT DISTINCT formated_start_date FROM {settings.speedGaugeData} WHERE driver_id = ? ORDER BY formated_start_date ASC'
+		sql = f'SELECT DISTINCT human_readable_start_date FROM {settings.speedGaugeData} WHERE driver_id = ? ORDER BY formated_start_date ASC'
 		value = (i,)
 		c.execute(sql, value)
 		result = c.fetchall()
