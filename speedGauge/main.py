@@ -1,24 +1,14 @@
 import settings
 import os
-from src import data_processing
-from src import db_utils
 from src import analysis
-from src import analysis3
 from src import visualizations
-from src import visualizations2
-from src import db_utils2
-from src import analysis2
-from src import processing2
-from src import processing3
+from src import db_utils
+from src import processing
 from src import reports
 from src import individualDriver
 from src import idrReport
 import matplotlib.pyplot as plt
 import console
-
-
-
-
 
 def idr(enter_driver=True, driver_id=30150643):
 	'''
@@ -45,68 +35,6 @@ def idr(enter_driver=True, driver_id=30150643):
 		data_package = individualDriver.main(enter_driver=False, driver_num=driver_id, print_out=True)
 		
 		idrReport.generate_report(data_package['stats'])
-
-
-
-
-def process_spreadsheet(file):
-	# get path for incoming file
-	file_path = os.path.join(folder_path, file)
-	
-	# extract date from spreadsheet
-	date_dict = data_processing.extract_date(file_path)
-
-	# get dicts for each row of file
-	data_dicts = data_processing.data_to_dict(file_path)
-	
-	# insert file data into db
-	for dictionary in data_dicts:
-		# insert dates into dictionary
-		dictionary['start_date'] = date_dict['start_date']
-		
-		dictionary['end_date'] = date_dict['end_date']
-		
-		# get accurate driver_id for dict
-		driver_id = db_utils.get_driver_id(dictionary['driver_name'])
-		
-		dictionary['driver_id'] = driver_id
-		
-		# send completed dictionary to db
-		tbl = 'speedGaugeData'
-		db_utils.insert_data(dictionary, tbl)
-		
-		# delete the name median from db
-		db_utils.delete_driver()
-	data_processing.mv_completed_file(file_path)
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-def db_setup():
-	'''
-	pretty straightforward. This just
-	tells the db_utils to run the 
-	generate_db function. this here is
-	just a way to use it from the main
-	file.
-	'''
-	db_utils.generate_db(debug=True)
-	
-
-
-
-
-
 
 def run_weekly_analyis(manager='chris'):
 	'''
@@ -223,20 +151,6 @@ def run_weekly_analyis(manager='chris'):
 	median_line_chart.close()
 	
 	report = reports.create_report(rtm_stats_analysis, manager, plt_paths)
-	
-	
-
-	
-
-
-	
-	
-	
-	
-
-	
-
-
 
 def driver_analysis(manager='chris'):
 	driver_id = input('Please enter driver id: ')
@@ -261,26 +175,14 @@ def driver_analysis(manager='chris'):
 	rtm_historical_data = db_utils2.gather_historical_driver_data(rtm_id_set)
 	company_historical_data = db_utils2.gather_historical_driver_data(company_id_set)
 
-
-
-
-
-
 def weekly_analysis():
-	analysis = analysis3.build_analysis()
-	plt_paths = visualizations2.controller(analysis)
+	stat_packet = analysis.build_analysis() 
+	rtm = stat_packet['rtm']
+	c = stat_packet['company']
 
-
-
-
-
-
-
-
+	plt_paths = visualizations.controller(stat_packet)
 
 def run_program():
-	folder_path = settings.UNPROCESSED_PATH
-	files = os.listdir(folder_path)
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
@@ -294,19 +196,20 @@ def run_program():
 	
 	console.clear()
 	if str(selection) == str(1):
-		processing3.main()
+		processing.main()
 	
 	elif str(selection) == str(2):
-		run_weekly_analyis()
-		run_weekly_analyis(manager='none')
+		weekly_analysis()
 	
 	elif str(selection) == str(3):
 		idr()
-	
 
-run_program()
-#run_weekly_analyis()
-#weekly_analysis()
+if __name__ == '__main__':
+	run_program()
+	#run_weekly_analyis()
+	#weekly_analysis()
+
+
 ids = {
 	1201619: 'rodrick',
 	30199025: 'perkins',
