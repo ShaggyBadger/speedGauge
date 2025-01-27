@@ -299,64 +299,15 @@ def controller(stats):
 	
 	'''build histograms'''
 	# build rtm histogram
-	raw_rtm_histo = gen_histogram(rtm_stats['raw_spd_lst1'])
-	filtered_rtm_histo = gen_histogram(rtm_stats['filtered_spd_lst1'])
-	raw_company_histo = gen_histogram(company_stats['raw_spd_lst1'])
-	filtered_company_histo = gen_histogram(company_stats['filtered_spd_lst1'])
+	raw_rtm_histo = gen_histogram(rtm_stats['raw_cur_spd'])
+	filtered_rtm_histo = gen_histogram(rtm_stats['filtered_cur_spd'])
+	raw_company_histo = gen_histogram(company_stats['raw_cur_spd'])
+	filtered_company_histo = gen_histogram(company_stats['filtered_cur_spd'])
+	
+	# build line charts
 	gen_line_chart('avgerage')
 	gen_line_chart('median')
 	
-
-
-
-
-def temp():
-	conn = settings.db_connection()
-	c = conn.cursor()
-	tbl1 = settings.driverInfo
-	tbl2 = settings.speedGaugeData
-	
-	tbl1_list = []
-	tbl2_list = []
-	
-	sql = f'SELECT DISTINCT driver_id FROM {tbl1}'
-	c.execute(sql)
-	results = c.fetchall()
-	for i in results:
-		tbl1_list.append(i[0])
-	
-	sql = f'SELECT DISTINCT driver_id FROM {tbl2}'
-	c.execute(sql)
-	results = c.fetchall()
-	for i in results:
-		try:
-			tbl2_list.append(int(i[0]))
-		except:
-			print(f'Error: {i[0]}')
-			print(f'Id type: {type(i[0])}')
-	
-	tbl1_list.sort()
-	tbl2_list.sort()
-	
-	new_list = []
-	
-	for i in tbl2_list:
-		if i not in tbl1_list:
-			new_list.append(i)
-	for i in new_list:
-		print(i)
-			
-	for i in new_list:
-		sql = f'SELECT driver_name FROM {tbl2} WHERE driver_id = ?'
-		value = (i,)
-		c.execute(sql, value)
-		result = c.fetchone()
-		driver_name = result[0]
-		
-		sql = f'INSERT INTO {tbl1} (driver_id, driver_name) VALUES (?, ?)'
-		values = (i, driver_name)
-		
-
 
 if __name__ == '__main__':
 	#prepare_line_data()

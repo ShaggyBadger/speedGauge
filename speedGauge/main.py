@@ -10,10 +10,6 @@ from src import idrReport
 import matplotlib.pyplot as plt
 import console
 
-
-
-
-
 def idr(enter_driver=True, driver_id=30150643):
 	'''
 	this can work from makn seledtion
@@ -39,31 +35,6 @@ def idr(enter_driver=True, driver_id=30150643):
 		data_package = individualDriver.main(enter_driver=False, driver_num=driver_id, print_out=True)
 		
 		idrReport.generate_report(data_package['stats'])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-
-
-
-
 
 def run_weekly_analyis(manager='chris'):
 	'''
@@ -180,20 +151,6 @@ def run_weekly_analyis(manager='chris'):
 	median_line_chart.close()
 	
 	report = reports.create_report(rtm_stats_analysis, manager, plt_paths)
-	
-	
-
-	
-
-
-	
-	
-	
-	
-
-	
-
-
 
 def driver_analysis(manager='chris'):
 	driver_id = input('Please enter driver id: ')
@@ -218,26 +175,14 @@ def driver_analysis(manager='chris'):
 	rtm_historical_data = db_utils2.gather_historical_driver_data(rtm_id_set)
 	company_historical_data = db_utils2.gather_historical_driver_data(company_id_set)
 
-
-
-
-
-
 def weekly_analysis():
-	stat_packet = analysis.build_analysis()
+	stat_packet = analysis.build_analysis() 
+	rtm = stat_packet['rtm']
+	c = stat_packet['company']
+
 	plt_paths = visualizations.controller(stat_packet)
 
-
-
-
-
-
-
-
-
 def run_program():
-	folder_path = settings.UNPROCESSED_PATH
-	files = os.listdir(folder_path)
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
@@ -254,15 +199,17 @@ def run_program():
 		processing.main()
 	
 	elif str(selection) == str(2):
-		weekly_analyis()
+		weekly_analysis()
 	
 	elif str(selection) == str(3):
 		idr()
-	
 
-run_program()
-#run_weekly_analyis()
-#weekly_analysis()
+if __name__ == '__main__':
+	run_program()
+	#run_weekly_analyis()
+	#weekly_analysis()
+
+
 ids = {
 	1201619: 'rodrick',
 	30199025: 'perkins',

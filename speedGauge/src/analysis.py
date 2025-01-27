@@ -76,14 +76,18 @@ def build_stats(cur_spd, prev_spd, date):
 	iqr_outlier_spd = []
 	
 	# build speed list without high stdev that mess up analysis
-	spd1 = filter_speed_list(cur_spd)
-	spd2 = filter_speed_list(prev_spd)
+	filtered_cur_speed = filter_speed_list(cur_spd)
+	filtered_prev_speed = filter_speed_list(prev_spd)
+	
+	# get mode of data
+	cur_mode = statistics.mode(filtered_cur_speed)
+	prev_mode = statistics.mode(filtered_prev_speed)
 	
 	# get avg stats
-	avg1 = statistics.mean(spd1)
-	avg2 = statistics.mean(spd2)
-	stdev1 = statistics.stdev(spd1)
-	stdev2 = statistics.stdev(spd2)
+	avg1 = statistics.mean(filtered_cur_speed)
+	avg2 = statistics.mean(filtered_prev_speed)
+	stdev1 = statistics.stdev(filtered_cur_speed)
+	stdev2 = statistics.stdev(filtered_prev_speed)
 	
 	avg_abs_change = avg1 - avg2
 	avg_percent_change = get_percent_change(avg1, avg2)
@@ -92,19 +96,20 @@ def build_stats(cur_spd, prev_spd, date):
 	stdev_buckets = build_stdev_buckets(avg1, stdev1, cur_spd)
 	
 	# get median stats
-	median1 = statistics.median(spd1)
-	median2 = statistics.median(spd2)
+	median1 = statistics.median(filtered_cur_speed)
+	median2 = statistics.median(filtered_prev_speed)
 	
 	median_abs_change = median1 -  median2
 	median_percent_change = get_percent_change(median1, median2)
 	
 	# iqr stuff to find/filter outliers
 	# just google what iqr is
-	q1 = np.percentile(spd1, 25)
-	t = 0.75 * (len(spd2) + 1)
+	q1 = np.percentile(filtered_cur_speed, 25)
+	t = 0.75 * (len(filtered_cur_speed) + 1)
 	tlow = math.floor(t)
 	thigh = math.ceil(t)
-	q3 = (spd1[tlow]+spd1[thigh]) / 2
+	#q3 = (spd1[tlow]+spd1[thigh]) / 2
+	q3 = np.percentile(filtered_cur_speed, 75)
 	iqr = q3 - q1
 	high_range_iqr = q3 + (iqr * 1.5)
 	low_range_iqr = q1 - (iqr * 1.5)
@@ -116,19 +121,19 @@ def build_stats(cur_spd, prev_spd, date):
 	
 	stats = {
 		'date': date,
-		'sample_size': len(spd1),
+		'sample_size': len(filtered_cur_speed),
 		'stdev': round(stdev1, 2),
 		'stdev_buckets': stdev_buckets,
 		'1std': len(stdev_buckets['stdev1']),
 		'2std': len(stdev_buckets['stdev2']),
 		'3std': len(stdev_buckets['stdev3']),
 		'4stdplus': len(stdev_buckets['stdev4_plus']),
-		'avg1': round(avg1, 2),
-		'avg2': round(avg2, 2),
+		'cur_avg': round(avg1, 2),
+		'prev_avg': round(avg2, 2),
 		'avg_abs_change': round(avg_abs_change, 2),
 		'avg_percent_change': round(avg_percent_change, 2),
-		'median1': round(median1, 2),
-		'median2': round(median2, 2),
+		'cur_median': round(median1, 2),
+		'prev_median': round(median2, 2),
 		'median_abs_change': round(median_abs_change, 2),
 		'median_percent_change': round(median_percent_change, 2),
 		'q1': round(q1, 2),
@@ -136,10 +141,12 @@ def build_stats(cur_spd, prev_spd, date):
 		'iqr': round(iqr, 2),
 		'high_range_iqr': round(high_range_iqr, 2),
 		'low_range_iqr': round(low_range_iqr, 2),
-		'raw_spd_lst1': cur_spd,
-		'filtered_spd_lst1': spd1,
-		'raw_spd_lst2': prev_spd,
-		'filtered_spd_lst2': spd2,
+		'cur_mode': cur_mode,
+		'prev_mode': prev_mode,
+		'raw_cur_spd': cur_spd,
+		'filtered_cur_spd': filtered_cur_speed,
+		'raw_prev_spd': prev_spd,
+		'filtered_prev_spd': filtered_prev_speed,
 		'num_iqr_outliers': iqr_outlier_count
 	}
 	
@@ -163,6 +170,7 @@ def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
 	
 	rtm_speed = []
 	company_speed = []
+	none_spds = []
 	
 	# get rtm and company driver ids
 	company_ids = []
@@ -191,6 +199,9 @@ def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
 			
 			if driver_id in rtm_ids:
 				rtm_speed.append(percent_speeding)
+		
+		else:
+			none_spds.append(driver_id)
 	
 	rtm_speed.sort()
 	company_speed.sort()
@@ -200,6 +211,36 @@ def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
 		'rtm': rtm_speed,
 		'company': company_speed
 	}
+	
+	# print out a report
+	print('\n************************')
+	print('Analysis: Prepare Speeds Report')
+	print(f'Date: {date}')
+	print(f'RTM driver count: {len(rtm_ids)}')
+	print(f'RTM speed count: {len(rtm_speed)}')
+	print(f'Company driver count: {len(company_ids)}')
+	print(f'Company speed count: {len(company_speed)}')
+	print('driver_id with None for percent_speeding:')
+	for i in none_spds:
+		sql = f'SELECT driver_name FROM {settings.driverInfo} WHERE driver_id = ?'
+		value = (i,)
+		c.execute(sql, value)
+		result = c.fetchone()
+		if result != None:
+			driver_name = result[0]
+		else:
+			driver_name = None
+		
+		sql = f'SELECT DISTINCT formated_start_date FROM {settings.speedGaugeData} WHERE driver_id = ? ORDER BY formated_start_date ASC'
+		value = (i,)
+		c.execute(sql, value)
+		result = c.fetchall()
+		print(f'  {i}: {driver_name}')
+		print(f'  Dates for this driver:')
+		print(f'  {result}')
+	print('************************\n')
+	
+	conn.close()
 	
 	# send it
 	return data_packet
@@ -252,18 +293,8 @@ def build_analysis(rtm='chris'):
 	}
 	
 	return stats_bundle
-	
-	
-	
-	
-	
-		
-	
+
 if __name__ == '__main__':
 	#prepare_data()
 	a = build_analysis()
-	company = a['company']
-	rtm = a['rtm']
-	for i in company:
-		print(f'{i}: {company[i]}')
 	
