@@ -196,21 +196,7 @@ def prepare_line_data(rtm='chris'):
 	return data_packet
 
 
-def gen_histogram(spd_lst, numBins=15):
-	x_label = 'Speeding Percentage'
-	y_label = 'Number Of Drivers'
-	title = 'Distribution Of Speeding Percentages For The Week'
-	
-	plt.figure()
-	plt.hist(spd_lst, bins=numBins, edgecolor='black', color='blue', label='Rtm Stats')
-	
-	plt.xlabel(x_label)
-	plt.ylabel(y_label)
-	plt.title(title)
-	plt.show()
-	plt.close()
-	
-	return plt
+
 
 def gen_line_chart(stat_selection):
 	'''
@@ -289,9 +275,141 @@ def gen_line_chart(stat_selection):
 	plt.close()
 	
 	return plt_path
+
+def build_histogram(stats, scope, numBins=15, log_setting=False):
+	'''
+	build a histogram with raw speed list settled behind the filtered
+	speed list. 
 	
-def controller(stats):
+	set name of histogram to either Company or to RTM - rtm_name. Default rtm is chris.
+	'''
+	# collect speed lists
+	raw_cur_spd = stats['raw_cur_spd']
+	filtered_cur_spd = stats['filtered_cur_spd']
+	raw_mean = sum(raw_cur_spd) / len(raw_cur_spd)
+	filtered_mean = sum(filtered_cur_spd) / len(filtered_cur_spd)
+	
+	# build histo name
+	if scope == 'company':
+		title_scope = 'Company-Wide'
+	else:
+		title_scope = f'RTM - {scope.capitalize()}'
+	
+	x_label = 'Speeding Percentage'
+	y_label = 'Number Of Drivers'
+	title = f'{title_scope}: Weekly Distribution Of Speeding Percentages'
+	
+	plt.figure()
+	plt.hist(
+		filtered_cur_spd,
+		bins=numBins,
+		edgecolor='black',
+		color=settings.swto_blue,
+		label=f'{title_scope} percent_speeding list',
+		log=log_setting
+		)
+	
+	plt.axvline(filtered_mean, label=f'{title_scope}: Average', color='red')
+	
+	plt.xlabel(x_label)
+	plt.ylabel(y_label)
+	plt.title(title)
+	plt.legend()
+	plt.show()
+	plt.close()
+	
+	return plt
+	
+def build_scatter(stats):
+	plt.figure()
+	plt.scatter(
+		stats['filtered_cur_spd']
+		)
+	plt.show()
+	plt.close()
+	
+	return plt
+
+def build_line_data(date, rtm='chris'):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	company_spds = []
+	rtm_spds = []
+	
+	# build list if driver id for rtm
+	sql = f'SELECT DISTINCT driver_id FROM {settings.driverInfo} WHERE rtm = ?'
+	value = (rtm,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	rtm_ids = [result[0] for result in results]
+	
+	# gather speeds
+	sql = f'SELECT DISTINCT percent_speeding, driver_id FROM {settings.speedGaugeData} WHERE start_date = ?'
+	value = (date,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	
+	for i in results:
+		percent_speeding = i[0]
+		driver_id = i[1]
+		company_spds.append(percent_speeding)
+		
+		if driver_id in rtm_ids:
+			rtm_spds.append(percent_speeding)
+	
+	conn.close()
+	
+	# filter speeds
+	company_avg = statistics.mean(company_spds)
+	company_stdev = statistics.stdev(company_spds)
+	max_spd = company_avg + (3 * company_stdev)
+	filtered_company_spd = [speed for speed in company_spds if speed < max_spd]
+	
+	rtm_avg = statistics.mean(rtm_spds)
+	rtm_stdev = statistics.stdev(rtm_spds)
+	max_spd = rtm_avg + (3 * rtm_stdev)
+	filtered_rtm_spd = [speed for speed in rtm_spds if speed < max_spd]
+	
+	raw_comp_avg = statistics.mean(company_spds)
+	raw_rtm_avg = 
+	
+	
+def build_avg_line(rtm='chris'):
+	conn = settings.db_connection()
+	c = conn.cursor()
+
+	# build rtm driver id list
+	rtm_id_lst = []
+	sql = f'SELECT DISTINCT driver_id FROM {settings.driverInfo} WHERE rtm = ?'
+	value = (rtm,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	for i in results:
+		rtm_id_lst.appens(i[0])
+	
+	dates = get_date_list()
+	company_line_data = []
+	rtm_line_data = []
+	
+	for date in dates:
+		company_spd_lst = []
+		rtm_spd_lst = []
+
+
+	
+	plt.plot(
+		)
+		
+		
+	conm.close()
+	
+def controller(stats, rtm='chris'):
 	rtm_stats = stats['rtm']
+	for i in rtm_stats:
+		if not isinstance(rtm_stats[i], list):
+			print(f'{i}: {rtm_stats[i]}')
+	for i in rtm_stats:
+		print(i)
 	company_stats = stats['company']
 	date = rtm_stats['date']
 	
@@ -299,12 +417,16 @@ def controller(stats):
 	
 	'''build histograms'''
 	# build rtm histogram
-	raw_rtm_histo = gen_histogram(rtm_stats['raw_cur_spd'])
-	filtered_rtm_histo = gen_histogram(rtm_stats['filtered_cur_spd'])
-	raw_company_histo = gen_histogram(company_stats['raw_cur_spd'])
-	filtered_company_histo = gen_histogram(company_stats['filtered_cur_spd'])
+	rtm_histo = build_histogram(rtm_stats, rtm, log_setting=False)
+	company_histo = build_histogram(company_stats, 'company', log_setting=False)
+	
+	# build scatter plt
+	#rtm_scatter = build_scatter(rtm_stats)
+	
+	
 	
 	# build line charts
+	build_avg_line()
 	gen_line_chart('avgerage')
 	gen_line_chart('median')
 	
@@ -312,5 +434,6 @@ def controller(stats):
 if __name__ == '__main__':
 	#prepare_line_data()
 	#temp()
-	gen_line_chart('avgerage')
-	gen_line_chart('median')
+	#gen_line_chart('avgerage')
+	#gen_line_chart('median')
+	build_avg_line()
