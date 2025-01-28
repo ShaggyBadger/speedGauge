@@ -10,6 +10,12 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 # Now you can import settings
 import settings
 
+'''
+this module is responsible for processing in a spreadsheet, saving 
+the data to the database, moving the file to the processed folder, and 
+generating interpolated data if data is missing. 
+'''
+
 def mv_completed_file(dict_list, file_path):
 	'''
 	moves processed files out of
@@ -546,7 +552,6 @@ def processing_summary():
 	results = c.fetchall()
 	insertion_count_printout = f'Total number of insertions: {len(results)}\n'
 
-	
 	# find how many insertions were interpolated
 	sql = f'SELECT * FROM {tbl2} WHERE start_date = ? AND percent_speeding_source = ?'
 	value = (max_date, 'generated')
