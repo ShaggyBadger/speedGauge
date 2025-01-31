@@ -1,13 +1,19 @@
 import sys, os
+import platform
 import statistics
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Now you can import settings
 import settings
-import matplotlib
-matplotlib.use('TkAgg')
+
+system = platform.system()
+is_pythonista = sys.platform == 'ios'
+
+# check if system is pythonista. if not then use tkinter for visualizations
 import matplotlib.pyplot as plt
+if system != 'Darwin' and is_pythonista:
+	plt.switch_backebd('TkAgg')
 import matplotlib.dates as mdates
 from datetime import datetime
 
