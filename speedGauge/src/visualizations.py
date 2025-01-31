@@ -6,16 +6,18 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Now you can import settings
 import settings
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
 
+# check if system is pythonista. if not then use tkinter for visualizations
 system = platform.system()
 is_pythonista = sys.platform == 'ios'
 
-# check if system is pythonista. if not then use tkinter for visualizations
-import matplotlib.pyplot as plt
 if system != 'Darwin' and is_pythonista:
 	plt.switch_backebd('TkAgg')
-import matplotlib.dates as mdates
-from datetime import datetime
+
+'''*****Begin The Functions!****'''
 
 def save_plt(plt, date, plt_type, rtm='chris'):
 	scope = f'RTM_{rtm}'
