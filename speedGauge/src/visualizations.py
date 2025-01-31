@@ -5,6 +5,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Now you can import settings
 import settings
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime

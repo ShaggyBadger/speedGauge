@@ -2,7 +2,7 @@ import settings
 import sqlite3
 import json
 from pathlib import Path
-from src import processing3
+from src import processing
 import console
 
 '''
@@ -97,9 +97,9 @@ def populate_db():
 	
 	print(f'\nEntered {counter} drivers from file into db table.\n\nTotal drivers in table: {len(results)}')
 	
-	processing3.main(initializer=True)
-	processing3.update_missing_speeds()
-	processing3.interpolated_gen_report()
+	processing.main(initializer=True)
+	processing.update_missing_speeds()
+	processing.interpolated_gen_report()
 
 def special_ops():
 	pass
