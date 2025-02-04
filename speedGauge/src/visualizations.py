@@ -250,15 +250,25 @@ def controller(stats, rtm='chris'):
 	
 	'''build histograms'''
 	# build rtm histogram
-	rtm_histo = build_histogram(rtm_stats, rtm, log_setting=False)
-	company_histo = build_histogram(company_stats, 'company', log_setting=False)
+	rtm_histo_path = build_histogram(rtm_stats, rtm, log_setting=False)
+	company_histo_path = build_histogram(company_stats, 'company', log_setting=False)
 	
 	'''build scatter plt'''
 	#rtm_scatter = build_scatter(rtm_stats)
 	
 	'''build line charts'''
-	avg_plt = build_line_chart('average', rtm='chris')
-	median_plt = build_line_chart('median', rtm='chris')
+	avg_plt_path = build_line_chart('average', rtm='chris')
+	median_plt_path = build_line_chart('median', rtm='chris')
+	
+	plt_paths = {
+		'rtm_histo_path': rtm_histo_path,
+		'company_histo_path': company_histo_path,
+		'avg_plt_path': avg_plt_path,
+		'median_plt_pth': median_plt_path
+	}
+	
+	return plt_paths
+	
 
 if __name__ == '__main__':
 	#prepare_line_data()

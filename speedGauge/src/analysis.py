@@ -1,5 +1,6 @@
 import sys, os
 from pathlib import Path
+import importlib
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -293,6 +294,10 @@ def build_analysis(rtm='chris'):
 	}
 	
 	return stats_bundle
+
+# auto-reload settings module to prevent cache issues
+if 'analysis' in sys.modules:
+	importlib.reload(sys.modules['analysis'])
 
 if __name__ == '__main__':
 	#prepare_data()

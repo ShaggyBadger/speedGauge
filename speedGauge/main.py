@@ -185,6 +185,8 @@ def weekly_analysis():
 
 def run_program():
 	importlib.reload(visualizations)
+	importlib.reload(reports)
+	
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
