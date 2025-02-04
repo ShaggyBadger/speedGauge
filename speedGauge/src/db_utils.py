@@ -15,6 +15,7 @@ import settings
 List of functions
 -----------------
 
+build_imgStorage_tbl
 get_manager
 get_max_date
 get_all_dates
@@ -23,6 +24,25 @@ gather_driver_data
 gather_historical_driver_data
 
 '''
+
+def build_imgStorage_tbl():
+	'''creates the imgStorage table used for storing plots and stuff'''
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	# Create tables if they don't already exist
+	imgStorage_tblName = settings.imgStorage
+	
+	imgStorage_columns = ', '.join([f'{col_name} {col_type}' for col_name, col_type in settings.imgStorageTbl_column_info.items()])
+	
+	# build table
+	sql = f'CREATE TABLE IF NOT EXISTS {imgStorage_tblName} ({imgStorage_columns})'
+	c.execute(sql)
+	
+	# commit and close
+	conn.commit()
+	conn.close()
+
 def get_manager(driver_id):
 	conn = settings.db_connection()
 	c = conn.cursor()
@@ -221,3 +241,7 @@ def get_info(driver_id):
 	result = c.fetchone()
 	for i in result:
 		print(i)
+
+if __name__ == '__main__':
+	#build_imgStorage_tbl()
+	pass

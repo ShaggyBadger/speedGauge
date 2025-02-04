@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from src import processing
 import console
+from src import db_utils
 
 '''
 this module is meant to run when making a clone or a branch or whatever. it will make the directories that
@@ -56,6 +57,9 @@ def build_db():
 
 	conn.commit()
 	conn.close()
+	
+	# create imgStorage table
+	db_utils.build_imgStorage_tbl()
 	
 	print('\n\nInitial setup complete')
 

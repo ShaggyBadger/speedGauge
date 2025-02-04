@@ -1,5 +1,7 @@
 # settings.py
 import os
+import sys
+import importlib
 import sqlite3
 from pathlib import Path
 
@@ -82,6 +84,16 @@ mainTbl_column_info = {
 	'percent_speeding_source': 'TEXT'
 	}
 
+imgStorageTbl_column_info = {
+	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
+	'start_date': 'TEXT',
+	'rtm': 'TEXT',
+	'plt_type': 'TEXT',
+	'plt_name': 'TEXT',
+	'plt_path': 'TEXT',
+	'plt_blob': 'BLOB'
+}
+
 # easy color reference
 red = '#ff2400'
 green = '#03ac13'
@@ -98,6 +110,7 @@ down_arrow = '&#x2193;'
 # univeral refrence source. handy.
 speedGaugeData = 'speedGaugeData'
 driverInfo = 'driverInfo'
+imgStorage = 'imgStorage'
 
 # super common call. put this here so everyone can use it
 def db_connection():
@@ -105,3 +118,9 @@ def db_connection():
 	dbName = DB_PATH
 	conn = sqlite3.connect(dbName)
 	return conn
+
+
+
+# auto-reload settings module to prevent cache issues
+if 'settings' in sys.modules:
+	importlib.reload(sys.modules['settings'])

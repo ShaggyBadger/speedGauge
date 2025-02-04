@@ -1,5 +1,6 @@
 import settings
 import os
+import importlib
 from src import analysis
 from src import visualizations
 from src import db_utils
@@ -183,6 +184,7 @@ def weekly_analysis():
 	plt_paths = visualizations.controller(stat_packet)
 
 def run_program():
+	importlib.reload(visualizations)
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
