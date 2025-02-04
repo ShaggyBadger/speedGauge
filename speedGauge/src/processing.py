@@ -567,9 +567,7 @@ def main(initializer=False):
 	This is part of the intialize.py file
 	'''
 	folder_path = settings.UNPROCESSED_PATH
-	print(f"Type of folder_path: {type(folder_path)}")
-	print(f"Value of folder_path: {folder_path}")
-	
+
 	for file in folder_path.iterdir():
 		if file.is_file():
 			# extract data from spreadsheet

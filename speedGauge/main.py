@@ -182,6 +182,8 @@ def weekly_analysis():
 	c = stat_packet['company']
 
 	plt_paths = visualizations.controller(stat_packet)
+	
+	report_path = reports.create_report(stat_packet, plt_paths)
 
 def run_program():
 	importlib.reload(visualizations)
