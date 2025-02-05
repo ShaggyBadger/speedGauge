@@ -15,6 +15,8 @@ import settings
 List of functions
 -----------------
 
+store_json_data
+build_analysisStorage_tbl
 build_imgStorage_tbl
 get_manager
 get_max_date
@@ -24,6 +26,51 @@ gather_driver_data
 gather_historical_driver_data
 
 '''
+
+def store_json_data(stats_json, plt_paths_json, rtm, start_date):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	sql = f'SELECT id FROM {settings.analysisStorage} WHERE start_date = ?'
+	value = (start_date,)
+	c.execute(sql, value)
+	result = c.fetchone()
+	
+	if result is None:
+		# make new entry
+		sql = f'INSERT INTO {settings.analysisStorage} (start_date, rtm, stats, plt_paths) VALUES (?, ?, ?, ?)'
+		values = (start_date, rtm, stats_json, plt_paths_json)
+		c.execute(sql, values)
+		print('Saving new json data to db')
+	else:
+		# override existing entry
+		id = result[0]
+		sql = f'UPDATE {settings.analysisStorage} SET rtm = ?, stats = ?, plt_paths = ? WHERE id = ?'
+		values = (rtm, stats_json, plt_paths_json, result[0])
+		c.execute(sql, values)
+		print('Overriding exsisting json data in the db with new json data')
+	
+	conn.commit()
+	conn.close()
+
+def build_analysisStorage_tbl():
+	'''creates the analysisStorage table used for storing analysis and plt_paths json files'''
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	# Create tables if they don't already exist
+	analysisStorage_tblName = settings.analysisStorage
+	
+	analysisStorage_columns = ', '.join([f'{col_name} {col_type}' for col_name, col_type in settings.analysisStorageTbl_column_info.items()])
+	
+	# build table
+	sql = f'CREATE TABLE IF NOT EXISTS {analysisStorage_tblName} ({analysisStorage_columns})'
+	c.execute(sql)
+	
+	# commit and close
+	conn.commit()
+	conn.close()
+	print('analysisStorage table created successfully')
 
 def build_imgStorage_tbl():
 	'''creates the imgStorage table used for storing plots and stuff'''
@@ -243,5 +290,5 @@ def get_info(driver_id):
 		print(i)
 
 if __name__ == '__main__':
-	#build_imgStorage_tbl()
+	#build_analysisStorage_tbl()
 	pass

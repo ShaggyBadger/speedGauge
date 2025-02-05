@@ -19,14 +19,6 @@ import settings
 
 
 
-def add_logo(canvas, doc):
-	logo_path = Path(settings.IMG_ASSETS_PATH) / 'swto_img.png'
-	
-	x = doc.pagesize[0] - 1.5 * inch
-	y = 0.5 * inch
-	canvas.drawImage(logo_path, x, y, width=1 * inch, height=1 * inch, preserveAspectRatio=True, mask='auto')
-
-
 
 
 
@@ -85,35 +77,6 @@ def insert_swto_icon(content, doc):
 
 
 
-
-
-
-def build_output_path(processing_data, scope):
-	REPORTS_PATH = settings.REPORTS_PATH
-	stats = processing_data['stats']
-	red = settings.red
-	green = settings.green
-	
-	
-	
-	current_date = stats['date']
-	
-	# Parse date into a datetime object
-	date_obj = datetime.strptime(current_date, "%Y-%m-%d %H:%M")
-
-	# Format it into "12Dec2024"
-	formatted_date = date_obj.strftime("%d%b%Y").upper()
-	
-	report_dir = REPORTS_PATH / formatted_date
-	report_dir.mkdir(parents=True, exist_ok=True)
-	
-	file_name = f'{formatted_date}_{scope}.pdf'
-	
-	file_path = report_dir / file_name
-	
-	return file_path
-	
-	
 
 
 
@@ -433,45 +396,3 @@ def create_median_frame(stats_package, scope, plt_paths, styles, doc):
 	
 	
 	return content
-	
-	
-
-
-
-
-
-
-
-def create_report(stats_package, scope, plt_paths):
-	'''
-	scope will indicate if the file is 
-	rtm or company
-	'''
-	
-	output_path = build_output_path(stats_package, scope)
-	frame = Frame(0.5 * inch, 0.5 * inch, 7.5 * inch, 10 * inch, id='main_frame')
-	
-	doc = SimpleDocTemplate(
-    str(output_path),
-    pagesize=letter,
-    )
-	styles = getSampleStyleSheet()
-	
-	# Add the custom PageTemplate with the logo
-	doc.addPageTemplates([
-		PageTemplate(id='main_frame', frames=[frame], onPage=add_logo),])
-	styles.add(ParagraphStyle(name='centeredText', alignment=TA_CENTER))
-	
-	
-	
-	content = []
-	content.extend(create_overview_frame(stats_package, scope, plt_paths, styles, doc))
-	content.append(PageBreak())	
-	content.extend(create_avg_frame(stats_package, scope, plt_paths, styles, doc))
-	
-	content.append(PageBreak())
-	content.extend(create_median_frame(stats_package, scope, plt_paths, styles, doc))
-
-	
-
-	doc.build(content)

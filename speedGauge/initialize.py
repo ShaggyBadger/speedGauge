@@ -54,6 +54,12 @@ def build_db():
 	# create speedGaugeData table
 	sql = f'CREATE TABLE IF NOT EXISTS {speedGaugeData_tblName} ({speedGaugeData_columns})'
 	c.execute(sql)
+	
+	# create imgStorage table
+	db_utils.build_imgStorage_tbl()
+	
+	# create analysisStorage table
+	db_utils.build_analysisStorage_tbl()
 
 	conn.commit()
 	conn.close()

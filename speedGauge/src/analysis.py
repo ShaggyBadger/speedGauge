@@ -290,7 +290,8 @@ def build_analysis(rtm='chris'):
 	
 	stats_bundle = {
 		'company': company_stats,
-		'rtm': rtm_stats
+		'rtm': rtm_stats,
+		'rtm_name': rtm
 	}
 	
 	return stats_bundle

@@ -10,6 +10,7 @@ from src import individualDriver
 from src import idrReport
 import matplotlib.pyplot as plt
 import console
+import json
 
 def idr(enter_driver=True, driver_id=30150643):
 	'''
@@ -37,122 +38,6 @@ def idr(enter_driver=True, driver_id=30150643):
 		
 		idrReport.generate_report(data_package['stats'])
 
-def run_weekly_analyis(manager='chris'):
-	'''
-	main function to run analysis
-	
-	manager can be rtm name or it can
-	be "none" in order to get ALL
-	drivers ids. 
-	'''
-	# dict to hold paths to the plots
-	plt_paths = {}
-	
-	# build up this week's data'
-	current_date = db_utils2.get_max_date()
-	date_list = db_utils2.get_all_dates()
-	previous_date = date_list[-2]
-	
-	# gather id numbers to analyze
-	rtm_id_set = db_utils2.gather_driver_ids(rtm=manager)
-	company_id_set = db_utils2.gather_driver_ids(rtm='none')
-	
-	rtm_driver_data = db_utils2.gather_driver_data(rtm_id_set, current_date)
-	rtm_driver_data2 = db_utils2.gather_driver_data(rtm_id_set, previous_date)
-	company_driver_data = db_utils2.gather_driver_data(company_id_set, current_date)
-	company_driver_data2 = db_utils2.gather_driver_data(company_id_set, previous_date)
-	
-	# median and mean historical data
-	rtm_historical_data = db_utils2.gather_historical_driver_data(rtm_id_set)
-	company_historical_data = db_utils2.gather_historical_driver_data(company_id_set)
-	
-	# analyize this week data
-	rtm_stats_analysis = analysis2.weekly_stats_analysis(rtm_driver_data, rtm_driver_data2, current_date)
-	company_stats_analysis = analysis2.weekly_stats_analysis(company_driver_data, company_driver_data2, current_date)
-	
-	
-	# print out info
-	analysis2.print_stats(rtm_stats_analysis, f'RTM: {manager}')
-	analysis2.print_stats(company_stats_analysis, 'Company')
-	
-	rtm_stats = rtm_stats_analysis['stats']
-	company_stats = company_stats_analysis['stats']
-	
-	
-	rtm_box_plot = visualizations.gen_box_chart(rtm_stats)
-	processing_data = {
-		'plt': rtm_box_plot,
-		'current_date': current_date,
-		'scope': f'RTM_{manager}',
-		'plt_type': 'boxPlot'
-	}
-	rbp =processing2.save_plt(processing_data)
-	plt_paths['rtm_boxPlot'] = rbp
-	rtm_box_plot.show()
-	rtm_box_plot.close()
-	
-	company_box_plot = visualizations.gen_box_chart(company_stats)
-	processing_data = {
-		'plt': company_box_plot,
-		'current_date': current_date,
-		'scope': f'company',
-		'plt_type': 'boxPlot'
-	}
-	cbp = processing2.save_plt(processing_data)
-	plt_paths['company_boxPlot'] = cbp
-	company_box_plot.show()
-	company_box_plot.close()
-	
-	rtm_histogram = visualizations.gen_histogram(rtm_stats)
-	processing_data = {
-		'plt': rtm_histogram,
-		'current_date': current_date,
-		'scope': f'RTM_{manager}',
-		'plt_type': 'histogram'
-	}
-	rh = processing2.save_plt(processing_data)
-	plt_paths['rtm_histogram'] = rh
-	rtm_histogram.show()
-	rtm_histogram.close()
-
-	company_histogram = visualizations.gen_histogram(company_stats)
-	processing_data = {
-		'plt': company_histogram,
-		'current_date': current_date,
-		'scope': 'company',
-		'plt_type': 'histogram'
-	}
-	ch = processing2.save_plt(processing_data)
-	plt_paths['company_histogram'] = ch
-	company_histogram.show()
-	company_histogram.close()
-
-	median_line_chart = visualizations.gen_line_chart('median', rtm_historical_data, company_historical_data)
-	processing_data = {
-		'plt': median_line_chart,
-		'current_date': current_date,
-		'scope': f'RTM_{manager}',
-		'plt_type': 'medianLineChart'
-	}
-	medianlc = processing2.save_plt(processing_data)
-	plt_paths['median_lineChart'] = medianlc
-	median_line_chart.show()
-	median_line_chart.close()
-
-	mean_line_chart = visualizations.gen_line_chart('mean', rtm_historical_data, company_historical_data)
-	processing_data = {
-		'plt': mean_line_chart,
-		'current_date': current_date,
-		'scope': f'RTM_{manager}',
-		'plt_type': 'avgLineChart'
-	}
-	meanlc = processing2.save_plt(processing_data)
-	plt_paths['mean_lineChart'] = meanlc
-	median_line_chart.show()
-	median_line_chart.close()
-	
-	report = reports.create_report(rtm_stats_analysis, manager, plt_paths)
-
 def driver_analysis(manager='chris'):
 	driver_id = input('Please enter driver id: ')
 	
@@ -177,17 +62,27 @@ def driver_analysis(manager='chris'):
 	company_historical_data = db_utils2.gather_historical_driver_data(company_id_set)
 
 def weekly_analysis():
-	stat_packet = analysis.build_analysis() 
-	rtm = stat_packet['rtm']
-	c = stat_packet['company']
+	stat_packet = analysis.build_analysis()
+	
+	rtm_analysis = stat_packet['rtm']
+	company_analysis = stat_packet['company']
+	rtm_name = stat_packet['rtm_name']
+	start_date = rtm_analysis['date']
 
 	plt_paths = visualizations.controller(stat_packet)
+	
+	stats_json = json.dumps(stat_packet)
+	plt_paths_json = json.dumps(plt_paths, default=str)
+	
+	# save json data in the db
+	db_utils.store_json_data(stats_json, plt_paths_json, rtm_name, start_date)		
 	
 	report_path = reports.create_report(stat_packet, plt_paths)
 
 def run_program():
 	importlib.reload(visualizations)
 	importlib.reload(reports)
+	importlib.reload(db_utils)
 	
 	selection_dict = {
 		'1': 'process spreadsheets',

@@ -94,6 +94,14 @@ imgStorageTbl_column_info = {
 	'plt_blob': 'BLOB'
 }
 
+analysisStorageTbl_column_info = {
+	'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
+	'start_date': 'TEXT',
+	'rtm': 'TEXT',
+	'stats': 'TEXT',
+	'plt_paths': 'TEXT'
+}
+
 # easy color reference
 red = '#ff2400'
 green = '#03ac13'
@@ -111,6 +119,7 @@ down_arrow = '&#x2193;'
 speedGaugeData = 'speedGaugeData'
 driverInfo = 'driverInfo'
 imgStorage = 'imgStorage'
+analysisStorage = 'analysisStorage'
 
 # super common call. put this here so everyone can use it
 def db_connection():

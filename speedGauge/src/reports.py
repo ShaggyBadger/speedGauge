@@ -18,18 +18,93 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 # Now you can import settings
 import settings
 
-def build_output_path(date):
+'''
+plt_paths dict has these keys:
+	rtm_histo_path
+	company_histo_path
+	avg_plt_path
+	median_plt_pth
+'''
+
+def add_logo(canvas, doc):
+	logo_path = Path(settings.IMG_ASSETS_PATH) / 'swto_img.png'
+	
+	x = doc.pagesize[0] - 1.5 * inch
+	y = 0.5 * inch
+	canvas.drawImage(logo_path, x, y, width=1 * inch, height=1 * inch, preserveAspectRatio=True, mask='auto')
+
+def build_output_path(date, rtm='chris'):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
 	sql = f'SELECT formated_start_date FROM {settings.speedGaugeData} WHERE start_date = ?'
 	value = (date,)
 	c.execute(sql, value)
-	result = c.fetchone()[0]
+	formatted_date = c.fetchone()[0]
 
 	conn.close()
 	
+	report_dir = settings.REPORTS_PATH / formatted_date
+	report_dir.mkdir(parents=True, exist_ok=True)
 	
+	file_name = f'{formatted_date}_{rtm}.pdf'
+	
+	file_path = report_dir / file_name
+	
+	return file_path
+
+def create_overview_frame(data_packet):	
+	stats = data_packet['stats']
+	for i in data_packet:
+		print(i)
+	rtm_stats = stats['rtm']
+	rtm = stats['rtm_name']
+	start_date = rtm_stats['date']
+
+	company_stats = stats['company']
+	date = rtm_stats['date']
+	
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	content = []
+	
+	rtm_histogram_path = str(plt_paths['rtm_histo_path'])
+	company_histogram_path = str(plt_paths['company_histo_path'])
+	
+	content.append(Paragraph(f'Overview for {rtm}', styles['Heading1']))
+	content.append(Paragraph(f'Week begin date: {start_date}', styles['Heading2']))
+	content.append(Spacer(1, 20))
+	
+	content.append(Paragraph(f'Number of drivers in this analysis: {stats["sample_size"]}\n', styles['BodyText']))
+	
+	content.append(Spacer(1,10))
+	
+	content.append(HRFlowable(width="75%", thickness=1, color="black", spaceBefore=10, spaceAfter=10))
+	
+	content.append(Paragraph(f'RTM Histogram Of Speeding Percents', styles['centeredText']))
+	rtm_img = Image(str(rtm_histogram_path), width=4*inch, height=2.4*inch)
+	content.append(rtm_img)
+	content.append(Spacer(1,0.5*inch))
+	
+	content.append(Paragraph(f'Company-Wide Histogram Of Speeding Percents', styles['centeredText']))
+	
+	company_img = Image(company_histogram_path, width=4*inch, height=2.4*inch)
+	content.append(company_img)
+	
+	
+	return content
+
+def create_avg_frame(data_packet):
+	context = []
+	
+	return context
+	
+def create_median_frame(data_packet):
+	context = []
+	
+	return context
 
 def create_report(stats, plt_paths):
 	rtm_stats = stats['rtm']
@@ -48,17 +123,20 @@ def create_report(stats, plt_paths):
 		PageTemplate(id='main_frame', frames=[frame], onPage=add_logo),])
 	styles.add(ParagraphStyle(name='centeredText', alignment=TA_CENTER))
 	
-	
+	data_packet = {
+		'stats': stats,
+		'plt_paths': plt_paths,
+		'styles': styles,
+		'doc': doc
+	}
 	
 	content = []
-	content.extend(create_overview_frame(stats_package, scope, plt_paths, styles, doc))
+	content.extend(create_overview_frame(data_packet))
 	content.append(PageBreak())	
-	content.extend(create_avg_frame(stats_package, scope, plt_paths, styles, doc))
+	content.extend(create_avg_frame(data_packet))
 	
 	content.append(PageBreak())
-	content.extend(create_median_frame(stats_package, scope, plt_paths, styles, doc))
-
-	
+	content.extend(create_median_frame(data_packet))
 
 	doc.build(content)
 	
@@ -67,6 +145,7 @@ if __name__ == '__main__':
 	with open('stats.json', 'r') as json_file:
 		stats = json.load(json_file)
 	
-	plt_paths = {}
+	with open('plt_paths.json', 'r') as json_file:
+		plt_paths = json.load(json_file)
 	
 	create_report(stats, plt_paths)
