@@ -77,7 +77,7 @@ def create_overview_frame(data_packet):
 	content.append(Paragraph(f'Week begin date: {start_date}', styles['Heading2']))
 	content.append(Spacer(1, 20))
 	
-	content.append(Paragraph(f'Number of drivers in this analysis: {stats["sample_size"]}\n', styles['BodyText']))
+	content.append(Paragraph(f'Number of drivers in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
 	
 	content.append(Spacer(1,10))
 	
@@ -107,6 +107,8 @@ def create_median_frame(data_packet):
 	return context
 
 def create_report(stats, plt_paths):
+	for i in stats:
+		print(i)
 	rtm_stats = stats['rtm']
 	output_path = build_output_path(rtm_stats['date'])
 	
@@ -142,10 +144,14 @@ def create_report(stats, plt_paths):
 	
 if __name__ == '__main__':
 	import json
-	with open('stats.json', 'r') as json_file:
-		stats = json.load(json_file)
-	
-	with open('plt_paths.json', 'r') as json_file:
-		plt_paths = json.load(json_file)
+	conn = settings.db_connection()
+	c = conn.cursor()
+	sql = f'SELECT start_date, rtm, stats, plt_paths FROM {settings.analysisStorage} ORDER BY start_date'
+	c.execute(sql)
+	result = c.fetchone()
+	stats = json.loads(result[2])
+	plt_paths = json.loads(result[3])
+	conn.close()
+
 	
 	create_report(stats, plt_paths)
