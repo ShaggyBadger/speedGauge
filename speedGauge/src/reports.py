@@ -5,6 +5,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import HRFlowable
 from reportlab.lib.units import inch
 
@@ -53,10 +54,10 @@ def build_output_path(date, rtm='chris'):
 	
 	return file_path
 
-def create_overview_frame(data_packet):	
+def create_overview_frame(data_packet):
+	page_width = letter[0]
 	stats = data_packet['stats']
-	for i in data_packet:
-		print(i)
+
 	rtm_stats = stats['rtm']
 	rtm = stats['rtm_name']
 	start_date = rtm_stats['date']
@@ -80,44 +81,296 @@ def create_overview_frame(data_packet):
 	content.append(Paragraph(f'Number of drivers in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
 	
 	content.append(Spacer(1,10))
-	
 	content.append(HRFlowable(width="75%", thickness=1, color="black", spaceBefore=10, spaceAfter=10))
 	
-	content.append(Paragraph(f'RTM Histogram Of Speeding Percents', styles['centeredText']))
-	rtm_img = Image(str(rtm_histogram_path), width=4*inch, height=2.4*inch)
-	content.append(rtm_img)
+	rtm_img = Image(str(rtm_histogram_path), width=3.5*inch, height=2.1*inch)
+
+	company_img = Image(company_histogram_path, width=3.5*inch, height=2.1*inch)
+	
+	rtm_hist_head = Paragraph(f'RTM Histogram Of Speeding Percents', styles['centeredText'])
+	comp_hist_head = Paragraph(f'Company-Wide Histogram Of Speeding Percents', styles['centeredText'])
+	
+	tbl_data = [
+		[
+			'',
+			rtm_hist_head,
+			comp_hist_head,
+			''
+			],
+		[
+			'',
+			rtm_img,
+			company_img,
+			''
+			]
+		]
+	col1_w = page_width * .05
+	col2_w = page_width * .45
+	col3_w = page_width * .45
+	col4_w = page_width * .05
+	table = Table(
+		tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w,
+			col3_w,
+			col4_w
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (1,1), 'MIDDLE')
+		])
+	table.setStyle(style)
+	content.append(table)
+
 	content.append(Spacer(1,0.5*inch))
-	
-	content.append(Paragraph(f'Company-Wide Histogram Of Speeding Percents', styles['centeredText']))
-	
-	company_img = Image(company_histogram_path, width=4*inch, height=2.4*inch)
-	content.append(company_img)
-	
 	
 	return content
 
-def create_avg_frame(data_packet):
-	context = []
+def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
+	"""
+	Format a statistic with color and optional arrows.
+
+	Args:
+		value (float): The numeric value to evaluate.
+		threshold (float, optional): A static threshold for comparison.
+		arrow (bool, optional): Whether to add an up/down arrow for percent change.
+
+	Returns:
+		Paragraph: A styled paragraph with the appropriate color and symbol.
+		"""
+	color = colors.black
+	symbol = ""
+	styles = getSampleStyleSheet()
 	
-	return context
+	if threshold is not None:
+		# Static threshold check (green if below, red if above)
+		color = colors.green if value < threshold else colors.red
+	else:
+		# Percent change logic
+		color = colors.green if value < 0 else colors.red
+		if arrow:
+			symbol = "&#x2193;" if value < 0 else "&#x2191;"  # Unicode arrows ↓ (2193) and ↑ (2191)
+	
+	# Format the value with 2 decimal places
+	formatted_value = f"{value:.2f}% {symbol}".strip() if percentage is True else f'{value:.2f} {symbol}'.strip()
+	
+	# Create styled paragraph
+	return Paragraph(f'<font color="{color}"><strong>{formatted_value}</strong></font>', styles['BodyText'])
+
+def stdev_tbl(data_packet):
+	stats = data_packet['stats']
+	page_width = letter[0]
+	rtm_stats = stats['rtm']
+	rtm = stats['rtm_name']
+	start_date = rtm_stats['date']
+	company_stats = stats['company']
+	date = rtm_stats['date']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
+	
+	''' tbl data stuff? '''
+	col1_w = page_width * .2
+	col2_w = page_width * .2
+	
+	'''stdev data'''
+	a1 = Paragraph(f'Standard Deviation:')
+	b1 = Paragraph(f'<font color="{colors.black}"><strong>{rtm_stats["stdev"]}</strong></font>')
+	a2 = Paragraph(f'Number of drivers within 1 standard deviation of the mean:')
+	b2 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["1std"]}</strong></font>')
+	a3 = Paragraph(f'Number of drivers within 2 standard deviations of the mean:')
+	b3 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["2std"]}</strong></font>')
+	a4 = Paragraph(f'Number of drivers within 3 standard deviations of the mean:')
+	b4 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["3std"]}</strong></font>')
+	a5 = Paragraph(f'Number of drivers 4+ standard deviations from the mean:')
+	b5 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["4stdplus"]}</strong></font>')
+	stdev_explain = Paragraph(f'Standard deviation (STDEV) measures how much something varies from the average. STDEV helps identify these extremes — 1 STDEV is typical in a data set, 2 is unusual, and 3+ indicates a major outlier. Either someone has a heavy foot or there might be something weird going on with the tracking system.', styles['Code'])
+	
+	sub_tbl_data = [
+		[a1, b1],
+		[a2, b2],
+		[a3, b3],
+		[a4, b4],
+		[a5, b5]
+		]
+	
+	sub_tbl = Table(
+		sub_tbl_data,
+		colWidths = [col1_w, col2_w]
+		)
+		
+	style = TableStyle([
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.lightgrey, colors.white])])
+	sub_tbl.setStyle(style)
+
+	''' build the main table '''
+	col1_w = page_width * .05
+	col2_w = page_width * .45
+	col3_w = page_width * .45
+	col4_w = page_width * .05
+		
+	col2_head = Paragraph(f'Standard Deviation Primer', styles['centeredText'])
+	col3_head = Paragraph(f'Standard Deviation Stats', styles['centeredText'])
+	
+	# each row of data gets a list in tbl_data
+	tbl_data = [
+	[
+		'',
+		col2_head,
+		col3_head,
+		''
+		],
+	[
+		'',
+		stdev_explain,
+		sub_tbl,
+		''
+		]
+	]
+	
+	table = Table(
+		tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w,
+			col3_w,
+			col4_w
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (1,1), 'MIDDLE')
+		])
+	table.setStyle(style)
+	
+	return table
+	
+
+def create_avg_frame(data_packet):
+	content = []
+	spacer = Spacer(1, 0.2*inch)
+	hr = HRFlowable(width='100%', thickness=1, color=settings.swto_blue)
+	page_width = letter[0]
+	stats = data_packet['stats']
+
+	rtm_stats = stats['rtm']
+	rtm = stats['rtm_name']
+	start_date = rtm_stats['date']
+	company_stats = stats['company']
+	date = rtm_stats['date']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
+	red = settings.red
+	green = settings.green
+	warning_orange = settings.warning_orange
+	''' tbl data stuff? '''
+	col1_w = page_width * .2
+	col2_w = page_width * .2
+	
+	''' build the sub_tbl for col2 '''
+	# mk one row per stat for averages with 2 columns
+	for i in rtm_stats:
+		print(i)
+	# a1 is column a row 1 etc
+	a1 = Paragraph(f'Current Rtm Average:')
+	b1 = bld_stat_color(rtm_stats['cur_avg'], threshold=0.4)
+	a2 = Paragraph(f'Last Week Rtm Average:')
+	b2 = bld_stat_color(rtm_stats['prev_avg'], threshold=0.4)
+	a3 = Paragraph(f'Absolute Change in percent_speeding:')
+	b3 = bld_stat_color(rtm_stats['avg_abs_change'], arrow=True, percentage=False)
+	a4 = Paragraph(f'Percent Change In percent_speeding:')
+	b4 = bld_stat_color(rtm_stats['avg_percent_change'], arrow=True)
+	
+
+	sub_tbl_data = [
+		[a1, b1],
+		[a2, b2],
+		[a3, b3],
+		[a4, b4]
+		]
+	sub_tbl = Table(
+		sub_tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (1,1), 'MIDDLE'),
+		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.lightgrey, colors.white])])
+	sub_tbl.setStyle(style)
+
+	
+	''' build the main table '''
+	col1_w = page_width * .05
+	col2_w = page_width * .45
+	col3_w = page_width * .45
+	col4_w = page_width * .05
+	avg_line_path = str(plt_paths['avg_plt_path'])
+	avg_img = Image(str(avg_line_path), width=3.5*inch, height=2.1*inch)
+		
+	col2_head = Paragraph(f'Average Statistics', styles['centeredText'])
+	col3_head = Paragraph(f'Line Graph of Averages', styles['centeredText'])
+	
+	# each row of data gets a list in tbl_data
+	tbl_data = [
+	[
+		'',
+		col2_head,
+		col3_head,
+		''
+		],
+	[
+		'',
+		sub_tbl, # table inside this cell
+		avg_img, # avg line graph
+		''
+		]
+	]
+	
+	table = Table(
+		tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w,
+			col3_w,
+			col4_w
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (1,1), 'MIDDLE')
+		])
+	table.setStyle(style)
+	content.append(table)
+	content.append(spacer)
+	content.append(hr)
+	content.append(spacer)
+	content.append(stdev_tbl(data_packet))
+	
+	
+	return content
 	
 def create_median_frame(data_packet):
-	context = []
+	content = []
 	
-	return context
+	return content
 
 def create_report(stats, plt_paths):
-	for i in stats:
-		print(i)
 	rtm_stats = stats['rtm']
 	output_path = build_output_path(rtm_stats['date'])
 	
 	frame = Frame(0.5 * inch, 0.5 * inch, 7.5 * inch, 10 * inch, id='main_frame')
 	
 	doc = SimpleDocTemplate(
-    str(output_path),
-    pagesize=letter,
-    )
+		str(output_path),
+		pagesize=letter,
+		)
 	styles = getSampleStyleSheet()
 	
 	# Add the custom PageTemplate with the logo
@@ -136,7 +389,6 @@ def create_report(stats, plt_paths):
 	content.extend(create_overview_frame(data_packet))
 	content.append(PageBreak())	
 	content.extend(create_avg_frame(data_packet))
-	
 	content.append(PageBreak())
 	content.extend(create_median_frame(data_packet))
 
