@@ -78,7 +78,8 @@ def create_overview_frame(data_packet):
 	content.append(Paragraph(f'Week begin date: {start_date}', styles['Heading2']))
 	content.append(Spacer(1, 20))
 	
-	content.append(Paragraph(f'Number of drivers in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
+	content.append(Paragraph(f'Number of drivers for RTM {stats["rtm_name"].capitalize()} in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
+	content.append(Paragraph(f'Number of drivers for the whole company in this analysis: {company_stats["sample_size"]}'))
 	
 	content.append(Spacer(1,10))
 	content.append(HRFlowable(width="75%", thickness=1, color="black", spaceBefore=10, spaceAfter=10))
@@ -151,6 +152,8 @@ def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 		color = colors.green if value < 0 else colors.red
 		if arrow:
 			symbol = "&#x2193;" if value < 0 else "&#x2191;"  # Unicode arrows ↓ (2193) and ↑ (2191)
+			if value == 0:
+				symbol = '-'
 	
 	# Format the value with 2 decimal places
 	formatted_value = f"{value:.2f}% {symbol}".strip() if percentage is True else f'{value:.2f} {symbol}'.strip()
@@ -173,8 +176,8 @@ def stdev_tbl(data_packet):
 	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
 	
 	''' tbl data stuff? '''
-	col1_w = page_width * .2
-	col2_w = page_width * .2
+	col1_w = page_width * .3
+	col2_w = page_width * .1
 	
 	'''stdev data'''
 	a1 = Paragraph(f'Standard Deviation:')
@@ -213,8 +216,8 @@ def stdev_tbl(data_packet):
 	col3_w = page_width * .45
 	col4_w = page_width * .05
 		
-	col2_head = Paragraph(f'Standard Deviation Primer', styles['centeredText'])
-	col3_head = Paragraph(f'Standard Deviation Stats', styles['centeredText'])
+	col2_head = Paragraph(f'<strong>Standard Deviation Primer</strong>', styles['centeredText'])
+	col3_head = Paragraph(f'<strong>Standard Deviation Stats</strong>', styles['centeredText'])
 	
 	# each row of data gets a list in tbl_data
 	tbl_data = [
@@ -252,7 +255,7 @@ def stdev_tbl(data_packet):
 def create_avg_frame(data_packet):
 	content = []
 	spacer = Spacer(1, 0.2*inch)
-	hr = HRFlowable(width='100%', thickness=1, color=settings.swto_blue)
+	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
 	page_width = letter[0]
 	stats = data_packet['stats']
 
@@ -270,14 +273,15 @@ def create_avg_frame(data_packet):
 	green = settings.green
 	warning_orange = settings.warning_orange
 	''' tbl data stuff? '''
-	col1_w = page_width * .2
-	col2_w = page_width * .2
+	col1_w = page_width * .3
+	col2_w = page_width * .1
 	
 	''' build the sub_tbl for col2 '''
 	# mk one row per stat for averages with 2 columns
-	for i in rtm_stats:
-		print(i)
+
 	# a1 is column a row 1 etc
+	a0 = Paragraph(f'<font color={colors.white}>Rtm Average Stats</font>')
+	b0 = Paragraph('')
 	a1 = Paragraph(f'Current Rtm Average:')
 	b1 = bld_stat_color(rtm_stats['cur_avg'], threshold=0.4)
 	a2 = Paragraph(f'Last Week Rtm Average:')
@@ -286,13 +290,33 @@ def create_avg_frame(data_packet):
 	b3 = bld_stat_color(rtm_stats['avg_abs_change'], arrow=True, percentage=False)
 	a4 = Paragraph(f'Percent Change In percent_speeding:')
 	b4 = bld_stat_color(rtm_stats['avg_percent_change'], arrow=True)
+
+	a5 = Paragraph('')
+	b5 = Paragraph('')
+	a6 = Paragraph(f'<font color={colors.white}>Company Average Stats</font>')
+	b6 = Paragraph('')
+	a7 = Paragraph(f'Current Company Average:')
+	b7 = bld_stat_color(company_stats['cur_avg'], threshold=0.4, arrow=False, percentage=False)
+	a8 = Paragraph(f'Previous Week Company Average:')
+	b8 = bld_stat_color(company_stats['prev_avg'], threshold=0.4, arrow=False, percentage=False)
+	a9 = Paragraph(f'Absolute Value of Change in Company Average:')
+	b9 = bld_stat_color(company_stats['avg_abs_change'], threshold=None, arrow=True, percentage=False)
+	a10 = Paragraph(f'Percent Change in Company Average:')
+	b10 = bld_stat_color(company_stats['avg_percent_change'], threshold=None, arrow=True, percentage=True)
 	
 
 	sub_tbl_data = [
+		[a0, b0],
 		[a1, b1],
 		[a2, b2],
 		[a3, b3],
-		[a4, b4]
+		[a4, b4],
+		[a5, b5],
+		[a6, b6],
+		[a7, b7],
+		[a8, b8],
+		[a9, b9],
+		[a10, b10]
 		]
 	sub_tbl = Table(
 		sub_tbl_data,
@@ -303,7 +327,9 @@ def create_avg_frame(data_packet):
 		)
 	style = TableStyle([
 		('VALIGN', (0,0), (1,1), 'MIDDLE'),
-		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.lightgrey, colors.white])])
+		('TEXTCOLOR', (0,0), (-1,0), colors.white),
+		('ROWBACKGROUNDS', (0,0), (-1, 0), [settings.swto_blue]),
+		('ROWBACKGROUNDS', (0,6), (-1, 6), [settings.swto_blue])])
 	sub_tbl.setStyle(style)
 
 	
@@ -312,11 +338,13 @@ def create_avg_frame(data_packet):
 	col2_w = page_width * .45
 	col3_w = page_width * .45
 	col4_w = page_width * .05
+	
 	avg_line_path = str(plt_paths['avg_plt_path'])
+	
 	avg_img = Image(str(avg_line_path), width=3.5*inch, height=2.1*inch)
 		
-	col2_head = Paragraph(f'Average Statistics', styles['centeredText'])
-	col3_head = Paragraph(f'Line Graph of Averages', styles['centeredText'])
+	col2_head = Paragraph(f'<font><strong>Average Statistics</strong></font>', styles['centeredText'])
+	col3_head = Paragraph(f'<font><strong>Line Graph of Averages</strong></font>', styles['centeredText'])
 	
 	# each row of data gets a list in tbl_data
 	tbl_data = [
@@ -344,6 +372,250 @@ def create_avg_frame(data_packet):
 			]
 		)
 	style = TableStyle([
+		('VALIGN', (0,0), (1,1), 'MIDDLE'),
+		('VALIGN', (2,1), (2,1), 'MIDDLE')
+		])
+	table.setStyle(style)
+	content.append(table)
+	content.append(spacer)
+	content.append(spacer)
+	content.append(hr)
+	content.append(spacer)
+	content.append(spacer)
+	content.append(stdev_tbl(data_packet))
+	
+	return content
+
+def median_sub_tbl(data_packet):
+	page_width = letter[0]
+	stats = data_packet['stats']
+
+	rtm_stats = stats['rtm']
+	rtm = stats['rtm_name']
+	start_date = rtm_stats['date']
+	company_stats = stats['company']
+	date = rtm_stats['date']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
+	red = settings.red
+	green = settings.green
+	warning_orange = settings.warning_orange
+	
+	''' tbl data stuff? '''
+	col1_w = page_width * .3
+	col2_w = page_width * .1
+	
+	'''Median data'''
+	a0 = Paragraph(f'<font color={colors.white}><strong>Rtm Median Stats</strong></font>')
+	b0 = Paragraph('')
+	a1 = Paragraph(f'Current RTM Median:')
+	b1 = bld_stat_color(rtm_stats['cur_median'], threshold=0.4, arrow=False, percentage=True)
+	a2 = Paragraph(f'Last Week RTM Median')
+	b2 = bld_stat_color(rtm_stats['prev_median'], threshold=0.4, arrow=False, percentage=True)
+	a3 = Paragraph(f'Absolute Value of Change in Median')
+	b3 = bld_stat_color(rtm_stats['median_abs_change'], threshold=None, arrow=True, percentage=True)
+	a4 = Paragraph(f'Percentage Change in Median')
+	b4 = bld_stat_color(rtm_stats['median_percent_change'], threshold=None, arrow=True, percentage=True)
+
+	a5 = Paragraph('')
+	b5 = Paragraph('')
+	a6 = Paragraph(f'<font color={colors.white}><strong>Company Median Stats</strong></font>')
+	b6 = Paragraph('')
+	a7 = Paragraph(f'Current Company Median:')
+	b7 = bld_stat_color(company_stats['cur_median'], threshold=0.4, arrow=False, percentage=False)
+	a8 = Paragraph(f'Previous Week Company Median:')
+	b8 = bld_stat_color(company_stats['prev_median'], threshold=0.4, arrow=False, percentage=False)
+	a9 = Paragraph(f'Absolute Value of Change in Company Median:')
+	b9 = bld_stat_color(company_stats['median_abs_change'], threshold=None, arrow=True, percentage=False)
+	a10 = Paragraph(f'Percent Change in Company Median:')
+	b10 = bld_stat_color(rtm_stats['median_percent_change'], threshold=None, arrow=True, percentage=True)
+	
+	sub_tbl_data = [
+		[a0, b0],
+		[a1, b1],
+		[a2, b2],
+		[a3, b3],
+		[a4, b4],
+		[a5, b5],
+		[a6, b6],
+		[a7, b7],
+		[a8, b8],
+		[a9, b9],
+		[a10, b10]
+		]
+	sub_tbl = Table(
+		sub_tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (1,1), 'MIDDLE'),
+		('TEXTCOLOR', (0,0), (-1,0), colors.white),
+		('ROWBACKGROUNDS', (0,0), (-1, 0), [settings.swto_blue]),
+		('ROWBACKGROUNDS', (0,6), (-1, 6), [settings.swto_blue])])
+	sub_tbl.setStyle(style)
+	
+	return sub_tbl
+
+def iqr_tbl(data_packet):
+	stats = data_packet['stats']
+	page_width = letter[0]
+	rtm_stats = stats['rtm']
+	rtm = stats['rtm_name']
+	start_date = rtm_stats['date']
+	company_stats = stats['company']
+	date = rtm_stats['date']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
+	
+	''' tbl data stuff? '''
+	col1_w = page_width * .3
+	col2_w = page_width * .1
+	
+	'''iqr data'''
+	a1 = Paragraph(f'<font color={colors.white}><strong>IQR:</strong></font>')
+	b1 = Paragraph(f'<font color="{colors.white}"><strong>{rtm_stats["iqr"]}</strong></font>')
+	a2 = Paragraph(f'Q1:')
+	b2 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["q1"]}</strong></font>')
+	a3 = Paragraph(f'Q3:')
+	b3 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["q3"]}</strong></font>')
+	a4 = Paragraph(f'High Range of IQR:')
+	b4 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["high_range_iqr"]}</strong></font>')
+	a5 = Paragraph(f'Number of RTM IQR outliers:')
+	b5 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["num_iqr_outliers"]}</strong></font>')
+	a6 = Paragraph(f'Number of Company IQR outliers:')
+	b6 = Paragraph(f'<font color="{colors.red}"><strong>{company_stats["num_iqr_outliers"]}</strong></font>')
+	stdev_explain = Paragraph(f'Interquartile Range (IQR) measures the spread of the middle 50% of your data. It’s the difference between the first quartile (25th percentile) and the third quartile (75th percentile), showing where the bulk of the data lies.<br/><br/>  •	1 IQR means data is typical and falls within the expected range.<br/>  •	2 IQRs suggests that the data is somewhat unusual.<br/>  •	3+ IQRs means the data point is an outlier, likely indicating something noteworthy, like a major change in behavior or a flaw in the system.<br/><br/>Typically, values beyond 1.5 times the IQR (<font color={colors.red}><strong>{round(rtm_stats["iqr"] * 1.5, 2)}</strong></font> in this case) are generally considered extreme outliers, so you might want to keep an eye on those.', styles['Code'])
+	
+	sub_tbl_data = [
+		[a1, b1],
+		[a2, b2],
+		[a3, b3],
+		[a4, b4],
+		[a5, b5],
+		[a6, b6]
+		]
+	
+	sub_tbl = Table(
+		sub_tbl_data,
+		colWidths = [col1_w, col2_w]
+		)
+		
+	style = TableStyle([
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+		('ROWBACKGROUNDS', (0,0), (1,0), [settings.swto_blue]),
+		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.lightgrey])])
+	sub_tbl.setStyle(style)
+
+	''' build the main table '''
+	col1_w = page_width * .05
+	col2_w = page_width * .45
+	col3_w = page_width * .45
+	col4_w = page_width * .05
+		
+	col2_head = Paragraph(f'<strong>InterQuartile Range Primer</strong>', styles['centeredText'])
+	col3_head = Paragraph(f'<strong>Standard Deviation Stats</strong>', styles['centeredText'])
+	
+	# each row of data gets a list in tbl_data
+	tbl_data = [
+	[
+		'',
+		col2_head,
+		col3_head,
+		''
+		],
+	[
+		'',
+		stdev_explain,
+		sub_tbl,
+		''
+		]
+	]
+	
+	table = Table(
+		tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w,
+			col3_w,
+			col4_w
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (2,1), 'MIDDLE')
+		])
+	table.setStyle(style)
+	
+	return table
+
+def create_median_frame(data_packet):
+	content = []
+	spacer = Spacer(1, 0.2*inch)
+	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
+	page_width = letter[0]
+	stats = data_packet['stats']
+
+	rtm_stats = stats['rtm']
+	rtm = stats['rtm_name']
+	start_date = rtm_stats['date']
+	company_stats = stats['company']
+	date = rtm_stats['date']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
+	red = settings.red
+	green = settings.green
+	warning_orange = settings.warning_orange
+	
+	''' build the main table '''
+	col1_w = page_width * .05
+	col2_w = page_width * .45
+	col3_w = page_width * .45
+	col4_w = page_width * .05
+	median_line_path = str(plt_paths['median_plt_path'])
+	median_img = Image(str(median_line_path), width=3.5*inch, height=2.1*inch)
+		
+	col2_head = Paragraph(f'<strong>Median Statistics</strong>', styles['centeredText'])
+	col3_head = Paragraph(f'<strong>Line Graph of Median Data</strong>', styles['centeredText'])
+	
+	sub_tbl = median_sub_tbl(data_packet)
+	
+	# each row of data gets a list in tbl_data
+	tbl_data = [
+	[
+		'',
+		col2_head,
+		col3_head,
+		''
+		],
+	[
+		'',
+		sub_tbl, # table inside this cell
+		median_img, # avg line graph
+		''
+		]
+	]
+	
+	table = Table(
+		tbl_data,
+		colWidths = [
+			col1_w,
+			col2_w,
+			col3_w,
+			col4_w
+			]
+		)
+	style = TableStyle([
 		('VALIGN', (0,0), (1,1), 'MIDDLE')
 		])
 	table.setStyle(style)
@@ -351,13 +623,10 @@ def create_avg_frame(data_packet):
 	content.append(spacer)
 	content.append(hr)
 	content.append(spacer)
-	content.append(stdev_tbl(data_packet))
+
+
+	content.append(iqr_tbl(data_packet))
 	
-	
-	return content
-	
-def create_median_frame(data_packet):
-	content = []
 	
 	return content
 
@@ -392,7 +661,7 @@ def create_report(stats, plt_paths):
 	content.append(PageBreak())
 	content.extend(create_median_frame(data_packet))
 
-	doc.build(content)
+	doc.build(content, onLaterPages=add_logo)
 	
 if __name__ == '__main__':
 	import json
@@ -402,7 +671,14 @@ if __name__ == '__main__':
 	c.execute(sql)
 	result = c.fetchone()
 	stats = json.loads(result[2])
+	rtm_stats = stats['rtm']
+	for i in rtm_stats:
+		print(i)
 	plt_paths = json.loads(result[3])
+	
+	# temporary adjustment to fix my mistake from visualizatikns. mistake is saved in the db, so we fix it here
+	median_plt_path = plt_paths['median_plt_pth']
+	plt_paths['median_plt_path'] = median_plt_path
 	conn.close()
 
 	

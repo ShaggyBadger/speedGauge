@@ -264,7 +264,7 @@ def controller(stats, rtm='chris'):
 		'rtm_histo_path': rtm_histo_path,
 		'company_histo_path': company_histo_path,
 		'avg_plt_path': avg_plt_path,
-		'median_plt_pth': median_plt_path
+		'median_plt_path': median_plt_path
 	}
 	
 	return plt_paths
