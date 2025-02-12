@@ -64,6 +64,74 @@ def build_stdev_buckets(avg, stdev, spd_list):
 	
 	return stdev_buckets
 
+def build_outlier_dicts(avg, stdev, high_iqr, start_date, max_stdev=4, rtm='chris'):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	threshold = avg + (stdev * max_stdev)
+	company_data = []
+	rtm_data = []
+	
+	# build list of id's for rtm
+	sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE rtm = ?'
+	value = (rtm,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	
+	rtm_list = [id[0] for id in results]
+	
+	# build list of drivers over threshold
+	sql = f'SELECT driver_id, percent_speeding, driver_name FROM {settings.speedGaugeData} WHERE (percent_speeding > ? OR percent_speeding > ?) AND start_date = ?'
+	values = (threshold, high_iqr, start_date)
+	c.execute(sql, values)
+	results = c.fetchall()
+	
+	# build dictionaries
+	for result in results:
+		driver_data = {
+			'driver_id': result[0],
+			'percent_speeding': result[1],
+			'driver_name': result[2]
+		}
+		
+		# determine iqr status
+		if result[1] > high_iqr:
+			driver_data['high_iqr_status'] = True
+		else:
+			driver_data['high_iqr_status'] = False
+		
+		iqr_differential = result[1] - high_iqr
+		driver_data['iqr_differential'] = round(float(iqr_differential), 2)
+		
+		# determine stdev status
+		driver_stdev = math.floor(((abs(result[1] - avg)) / stdev) + 1)
+		driver_data['driver_stdev'] = driver_stdev
+		
+		if driver_stdev >= max_stdev:
+			driver_data['stdev_status'] = True
+		else:
+			driver_data['stdev_status'] = False
+		
+		driver_data['stdev'] = driver_stdev
+		
+		if result[0] in rtm_list:
+			rtm_data.append(driver_data)
+		
+		company_data.append(driver_data)
+	
+	conn.close()
+	
+	sorted_company_data = sorted(company_data, key = lambda x: x['percent_speeding'])
+	
+	sorted_rtm_data = sorted(rtm_data, key = lambda x: x['percent_speeding'])
+	
+	final_dict = {
+		'company': sorted_company_data,
+		'rtm': sorted_rtm_data
+	}
+	return final_dict
+	
+
 def build_stats(cur_spd, prev_spd, date):
 	'''
 	returns a dictionary of stats for
@@ -120,6 +188,8 @@ def build_stats(cur_spd, prev_spd, date):
 		if spd > high_range_iqr:
 			iqr_outlier_count += 1
 	
+	outlier_dict_list = build_outlier_dicts(avg1, stdev1, high_range_iqr, date)
+	
 	stats = {
 		'date': date,
 		'sample_size': len(filtered_cur_speed),
@@ -148,7 +218,8 @@ def build_stats(cur_spd, prev_spd, date):
 		'filtered_cur_spd': filtered_cur_speed,
 		'raw_prev_spd': prev_spd,
 		'filtered_prev_spd': filtered_prev_speed,
-		'num_iqr_outliers': iqr_outlier_count
+		'num_iqr_outliers': iqr_outlier_count,
+		'outlier_dict_list': outlier_dict_list
 	}
 	
 	return stats
@@ -296,11 +367,10 @@ def build_analysis(rtm='chris'):
 	
 	return stats_bundle
 
-# auto-reload settings module to prevent cache issues
+# auto-reload module to prevent cache issues
 if 'analysis' in sys.modules:
 	importlib.reload(sys.modules['analysis'])
 
 if __name__ == '__main__':
-	#prepare_data()
 	a = build_analysis()
 	

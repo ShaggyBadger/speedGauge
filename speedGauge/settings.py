@@ -112,9 +112,6 @@ swto_blue = '#0b3e69'
 up_arrow = '&#x2191;'
 down_arrow = '&#x2193;'
 
-# prob gonna change this to something more better soon
-#tbl_name = 'speedGaugeData2'
-
 # univeral refrence source. handy.
 speedGaugeData = 'speedGaugeData'
 driverInfo = 'driverInfo'
@@ -127,8 +124,6 @@ def db_connection():
 	dbName = DB_PATH
 	conn = sqlite3.connect(dbName)
 	return conn
-
-
 
 # auto-reload settings module to prevent cache issues
 if 'settings' in sys.modules:

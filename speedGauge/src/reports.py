@@ -26,6 +26,17 @@ plt_paths dict has these keys:
 	avg_plt_path
 	median_plt_pth
 '''
+title_style = ParagraphStyle(
+	name="CustomStyle",
+	fontName="Helvetica-Bold",
+	fontSize=24,
+	leading=16,
+	textColor=settings.swto_blue,
+	alignment=TA_CENTER,
+	spaceBefore=10,
+	spaceAfter=10,
+	)
+
 
 def add_logo(canvas, doc):
 	logo_path = Path(settings.IMG_ASSETS_PATH) / 'swto_img.png'
@@ -74,8 +85,8 @@ def create_overview_frame(data_packet):
 	rtm_histogram_path = str(plt_paths['rtm_histo_path'])
 	company_histogram_path = str(plt_paths['company_histo_path'])
 	
-	content.append(Paragraph(f'Overview for {rtm}', styles['Heading1']))
-	content.append(Paragraph(f'Week begin date: {start_date}', styles['Heading2']))
+	content.append(Paragraph(f'Overview for {rtm}', title_style))
+	content.append(Paragraph(f'Week begin date: {start_date}', title_style))
 	content.append(Spacer(1, 20))
 	
 	content.append(Paragraph(f'Number of drivers for RTM {stats["rtm_name"].capitalize()} in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
@@ -272,6 +283,13 @@ def create_avg_frame(data_packet):
 	red = settings.red
 	green = settings.green
 	warning_orange = settings.warning_orange
+	
+	'''title for page'''
+	page_title = Paragraph('Averages Analyitics', title_style)
+	content.append(page_title)
+	content.append(spacer)
+	
+	
 	''' tbl data stuff? '''
 	col1_w = page_width * .3
 	col2_w = page_width * .1
@@ -577,6 +595,11 @@ def create_median_frame(data_packet):
 	green = settings.green
 	warning_orange = settings.warning_orange
 	
+	'''Page title part'''
+	page_title = Paragraph('Median Analitics', title_style)
+	content.append(page_title)
+	content.append(spacer)
+	
 	''' build the main table '''
 	col1_w = page_width * .05
 	col2_w = page_width * .45
@@ -621,6 +644,7 @@ def create_median_frame(data_packet):
 	table.setStyle(style)
 	content.append(table)
 	content.append(spacer)
+	content.append(spacer)
 	content.append(hr)
 	content.append(spacer)
 
@@ -629,6 +653,152 @@ def create_median_frame(data_packet):
 	
 	
 	return content
+
+def create_outlier_frame(data_packet):
+	content = []
+	centered_style = ParagraphStyle(
+		name="CenteredStyle",
+		alignment=TA_CENTER
+		)
+	spacer = Spacer(1, 0.2*inch)
+	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
+	page_width = letter[0]
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	stats = data_packet['stats']
+	
+	rtm_stats = stats['rtm']
+	rtm_outlier_list = rtm_stats['outlier_dict_list']['rtm']
+	
+	company_stats = stats['company']
+	company_outlier_list = company_stats['outlier_dict_list']['company']
+	
+	#test_dict = rtm_outlier_list[0]
+	#for i in test_dict:
+		#print(f'{i}: {test_dict[i]}')
+		
+	section_title = Paragraph('Outliers', title_style)
+	
+	content.append(section_title)
+	
+	# build the table
+	''' build the main table '''
+	# build column names
+	column_names = [
+		'Driver Id',
+		'Percent Speeding',
+		'Standard Deviation',
+		'IQR Outlier',
+		'IQR Differential'
+		]
+	column_keys = [
+		'driver_id',
+		'percent_speeding',
+		'driver_stdev',
+		'high_iqr_status',
+		'iqr_differential'
+		]
+	
+	# build data for rtm table
+	rtm_table_data = [column_names]
+	
+	for dict in rtm_outlier_list:
+		driver_id_data = Paragraph(f'<font color={colors.black}><strong>{dict["driver_id"]}</strong></font>', centered_style)
+		
+		percent_speeding_data = Paragraph(f'<font color={colors.black}><strong>{dict["percent_speeding"]}</strong></font>', centered_style)
+		
+		stdev_color = colors.green if dict['stdev'] < 4 else colors.red
+		driver_stdev_data = Paragraph(f'<font color={stdev_color}><strong>{dict["driver_stdev"]}</strong></font>', centered_style)
+		
+		iqr_outlier_color = colors.green if dict['high_iqr_status'] is False else colors.red
+		iqr_outlier_data = Paragraph(f'<font color={iqr_outlier_color}><strong>{dict["high_iqr_status"]}</strong></font>', centered_style)
+		
+		iqr_differential_color = colors.green if dict['iqr_differential'] < 0 else colors.red
+		iqr_differential_data = Paragraph(f'<font color={iqr_differential_color}><strong>{dict["iqr_differential"]}</strong></font>', centered_style)
+		
+		new_row = [
+			driver_id_data,
+			percent_speeding_data,
+			driver_stdev_data,
+			iqr_outlier_data,
+			iqr_differential_data
+			]
+		
+		rtm_table_data.append(new_row)
+
+	# build data for company table
+	company_table_data = [column_names]
+	
+	for dict in company_outlier_list:
+		driver_id_data = Paragraph(f'<font color={colors.black}><strong>{dict["driver_id"]}</strong></font>', centered_style)
+		
+		percent_speeding_data = Paragraph(f'<font color={colors.black}><strong>{dict["percent_speeding"]}</strong></font>', centered_style)
+		
+		stdev_color = colors.green if dict['stdev'] < 4 else colors.red
+		driver_stdev_data = Paragraph(f'<font color={stdev_color}><strong>{dict["driver_stdev"]}</strong></font>', centered_style)
+		
+		iqr_outlier_color = colors.green if dict['high_iqr_status'] is False else colors.red
+		iqr_outlier_data = Paragraph(f'<font color={iqr_outlier_color}><strong>{dict["high_iqr_status"]}</strong></font>', centered_style)
+		
+		iqr_differential_color = colors.green if dict['iqr_differential'] < 0 else colors.red
+		iqr_differential_data = Paragraph(f'<font color={iqr_differential_color}><strong>{dict["iqr_differential"]}</strong></font>', centered_style)
+		
+		new_row = [
+			driver_id_data,
+			percent_speeding_data,
+			driver_stdev_data,
+			iqr_outlier_data,
+			iqr_differential_data
+			]
+		
+		company_table_data.append(new_row)
+	
+	# build the tables
+	rtm_table = Table(rtm_table_data)
+	company_table = Table(company_table_data)
+	
+	style = TableStyle([
+		('ALIGN', (0,0), (-1,-1), 'CENTER'),
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+		('TEXTCOLOR', (0,0), (-1,0), colors.white),
+		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.lightgrey]),
+		('ROWBACKGROUNDS', (0,0), (-1, 0), [settings.swto_blue]),
+		])
+		
+	rtm_table.setStyle(style)
+	company_table.setStyle(style)
+	
+	'''
+	info for later formatting
+	
+	frame_height = doc.height
+	table_height = my_table.wrap(doc.width, doc.height)[1]  # Get table height
+
+	if table_height > (frame_height - 100):  # Adjust 100 to your graphic's height
+    content.append(PageBreak())  # Move table to the next page
+
+	content.append(my_table)
+	'''
+	
+	rtm_header = Paragraph('Statistical Outliers: <strong>RTM</strong> Edition', centered_style)
+	company_header = Paragraph('Statistical Outliers: <strong>Company</strong> Edition', centered_style)
+	content.append(spacer)
+	content.append(rtm_header)
+	content.append(spacer)
+	content.append(rtm_table)
+	content.append(spacer)
+	content.append(spacer)
+	content.append(company_header)
+	content.append(spacer)
+	content.append(company_table)
+	
+	
+	
+	
+
+	
+	return content
+	
 
 def create_report(stats, plt_paths):
 	rtm_stats = stats['rtm']
@@ -660,6 +830,9 @@ def create_report(stats, plt_paths):
 	content.extend(create_avg_frame(data_packet))
 	content.append(PageBreak())
 	content.extend(create_median_frame(data_packet))
+	
+	content.append(PageBreak())
+	content.extend(create_outlier_frame(data_packet))
 
 	doc.build(content, onLaterPages=add_logo)
 	
@@ -672,13 +845,12 @@ if __name__ == '__main__':
 	result = c.fetchone()
 	stats = json.loads(result[2])
 	rtm_stats = stats['rtm']
-	for i in rtm_stats:
-		print(i)
+	
 	plt_paths = json.loads(result[3])
 	
 	# temporary adjustment to fix my mistake from visualizatikns. mistake is saved in the db, so we fix it here
-	median_plt_path = plt_paths['median_plt_pth']
-	plt_paths['median_plt_path'] = median_plt_path
+	#median_plt_path = plt_paths['median_plt_pth']
+	#plt_paths['median_plt_path'] = median_plt_path
 	conn.close()
 
 	
