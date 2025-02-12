@@ -2,7 +2,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, 
 from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
@@ -36,6 +36,11 @@ title_style = ParagraphStyle(
 	spaceBefore=10,
 	spaceAfter=10,
 	)
+
+right_aligned_style = ParagraphStyle(
+	name="RightAligned",
+	alignment=TA_RIGHT
+)
 
 
 def add_logo(canvas, doc):
@@ -814,13 +819,17 @@ def create_final_frame(data_packet):
 	content.append(sub_title2)
 	content.append(spacer)
 	
-	filter_explanation = Paragraph('Averages and Median values sometimes have really odd entries. There was one that was like 600% speeding. It doesnt make sense, and these huge values tend to skew the final analysis.<br/><br/>So anyway, when going though all this info the program runs a raw average and standard deviation check, then filters out the rediculous outliers. Anything over 4 standard deviations gets removed from the sample, and then the new average and standard deviation more accuratly reflects whats going on with the data.', styles['Code'])
+	filter_explanation = Paragraph(f'<font color={settings.swto_blue} size=10><strong>Filtering Methodology: </strong></font>Averages and Median values sometimes have really odd entries. There was one that was like 600% speeding. It doesnt make sense, and these huge values tend to skew the final analysis.<br/><br/>So anyway, when going though all this info the program runs a raw average and standard deviation check, then filters out the rediculous outliers. Anything over 4 standard deviations gets removed from the sample, and then the new average and standard deviation more accuratly reflects whats going on with the data.', styles['Code'])
 	
-	missing_data_explanation = Paragraph("Sometimes the speedGauge spreadsheet doesn't include all the drivers. The worst example of this is when we get those spreadsheets with only like 50 people. It jacks up the trends.<br/><br/>So what we do is use a combination of extrapolation and interpolation to try and fill in missing values. It's not elegant, but its better than nothing and the data is close enough that it doesn't mess up the overall trend.", styles['Code'])
+	missing_data_explanation = Paragraph(f"<font color={settings.swto_blue} size=10><strong>Handling Missing Data: </strong></font>Sometimes the speedGauge spreadsheet doesn't include all the drivers. The worst example of this is when we get those spreadsheets with only like 50 people. It jacks up the trends.<br/><br/>So what we do is use a combination of extrapolation and interpolation to try and fill in missing values. It's not elegant, but its better than nothing and the data is close enough that it doesn't mess up the overall trend.", styles['Code'])
 	
 	content.append(filter_explanation)
 	content.append(spacer)
 	content.append(missing_data_explanation)
+	content.append(spacer)
+	
+	signature = Paragraph(f'<font color={settings.swto_blue} size=10><strong>-The Bulk Fuel Ranger</strong></font>', right_aligned_style)
+	content.append(signature)
 	
 	
 	
