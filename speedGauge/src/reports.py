@@ -792,13 +792,39 @@ def create_outlier_frame(data_packet):
 	content.append(spacer)
 	content.append(company_table)
 	
-	
-	
-	
-
-	
 	return content
 	
+def create_final_frame(data_packet):
+	styles = data_packet['styles']
+	content = []
+	centered_style = ParagraphStyle(
+		name="CenteredStyle",
+		alignment=TA_CENTER
+		)
+	spacer = Spacer(1, 0.2*inch)
+	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
+	page_width = letter[0]
+	
+	section_title = Paragraph('Analytic Methodologies', title_style)
+	sub_title1 = Paragraph('And', title_style)
+	sub_title2 = Paragraph('General Intel',title_style)
+	
+	content.append(section_title)
+	content.append(sub_title1)
+	content.append(sub_title2)
+	content.append(spacer)
+	
+	filter_explanation = Paragraph('Averages and Median values sometimes have really odd entries. There was one that was like 600% speeding. It doesnt make sense, and these huge values tend to skew the final analysis.<br/><br/>So anyway, when going though all this info the program runs a raw average and standard deviation check, then filters out the rediculous outliers. Anything over 4 standard deviations gets removed from the sample, and then the new average and standard deviation more accuratly reflects whats going on with the data.', styles['Code'])
+	
+	missing_data_explanation = Paragraph("Sometimes the speedGauge spreadsheet doesn't include all the drivers. The worst example of this is when we get those spreadsheets with only like 50 people. It jacks up the trends.<br/><br/>So what we do is use a combination of extrapolation and interpolation to try and fill in missing values. It's not elegant, but its better than nothing and the data is close enough that it doesn't mess up the overall trend.", styles['Code'])
+	
+	content.append(filter_explanation)
+	content.append(spacer)
+	content.append(missing_data_explanation)
+	
+	
+	
+	return content
 
 def create_report(stats, plt_paths):
 	rtm_stats = stats['rtm']
@@ -833,6 +859,9 @@ def create_report(stats, plt_paths):
 	
 	content.append(PageBreak())
 	content.extend(create_outlier_frame(data_packet))
+	content.append(PageBreak())
+	
+	content.extend(create_final_frame(data_packet))
 
 	doc.build(content, onLaterPages=add_logo)
 	
