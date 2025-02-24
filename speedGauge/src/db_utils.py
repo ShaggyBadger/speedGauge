@@ -24,6 +24,7 @@ get_all_dates
 gather_driver_ids
 gather_driver_data
 gather_historical_driver_data
+print_driver_info
 
 '''
 
@@ -94,7 +95,7 @@ def get_manager(driver_id):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
-	sql = f'SELECT manager FROM {settings.driverInfo} WHERE driver_id = ?'
+	sql = f'SELECT rtm FROM {settings.driverInfo} WHERE driver_id = ?'
 	value = (driver_id,)
 	c.execute(sql, value)
 	result = c.fetchone()
@@ -123,8 +124,8 @@ def get_max_date():
 
 def get_all_dates():
 	'''
-	returns list of each start_date in
-	the database
+	returns list of each start_date in the database in ascending order -
+	that is, oldest date is index 0
 	'''
 	date_list = []
 	
@@ -146,7 +147,7 @@ def gather_driver_ids(rtm='chris'):
 	returns all the driver numbers for
 	a given rtm 
 	
-	if rtm = none, then returns ALL 
+	if rtm = company, then returns ALL 
 	driver numbers
 	'''
 	
@@ -155,8 +156,8 @@ def gather_driver_ids(rtm='chris'):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
-	if rtm != 'none':
-		sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE rtm = ? '
+	if rtm != 'company':
+		sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE rtm = ?'
 		value = (rtm,)
 		
 		c.execute(sql, value)
@@ -179,19 +180,19 @@ def gather_driver_ids(rtm='chris'):
 
 def gather_driver_data(id_list, date):
 	'''
-	takes in a list of driver_ids and 
-	returns a list full of dictionaries
+	takes in a list of driver_ids and returns a list full of dictionaries
 	
 	dictionary keys:
 		driver_id
 		driver_name
 		percent_speeding
 	
-	this is limited to most recent
-	date in the database
+	this is limited to the given date in the database
+	
+	argumnt 1 is id_list, argument2 
 	'''
 	
-	print('Gathering driver data...')
+	print(f'Gathering driver data for {date}....')
 	
 	tbl = settings.speedGaugeData
 	data_packets = []
@@ -276,7 +277,7 @@ def gather_historical_driver_data(id_list):
 	conn.close()
 	return stats
 
-def get_info(driver_id):
+def print_driver_info(driver_id):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	tbl = settings.driverInfo

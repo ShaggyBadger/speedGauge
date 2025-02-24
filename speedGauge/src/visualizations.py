@@ -12,6 +12,7 @@ style.use('seaborn-talk')
 import matplotlib.dates as mdates
 from datetime import datetime
 from pathlib import Path
+from src import db_utils
 
 # check if system is pythonista. if not then use tkinter for visualizations
 system = platform.system()
@@ -64,25 +65,7 @@ def save_plt(plt, date, plt_type, rtm='chris'):
 	conn.close()
 	return img_path
 
-def get_date_list():
-	'''
-	returns a list of dates in the db 
-	in descending order. Newest date
-	will be index 0, last week will be
-	index 1, etc
-	'''
-	
-	conn = settings.db_connection()
-	c = conn.cursor()
-	
-	sql = f'SELECT DISTINCT start_date FROM {settings.speedGaugeData} ORDER BY start_date ASC'
-	c.execute(sql)
-	results = c.fetchall()
-	
-	date_list = [date[0] for date in results]
-	
-	return date_list
-	
+
 def build_histogram(stats, scope, numBins=15, log_setting=False):
 	'''
 	build a histogram with raw speed list settled behind the filtered
@@ -90,17 +73,19 @@ def build_histogram(stats, scope, numBins=15, log_setting=False):
 	
 	set name of histogram to either Company or to RTM - rtm_name. Default rtm is chris.
 	'''
-	# collect speed lists
-	raw_cur_spd = stats['raw_cur_spd']
-	filtered_cur_spd = stats['filtered_cur_spd']
-	raw_mean = sum(raw_cur_spd) / len(raw_cur_spd)
-	filtered_mean = sum(filtered_cur_spd) / len(filtered_cur_spd)
+	# get dates list
+	date_list = db_utils.get_all_dates()
+	cur_week = date_list[-1]
 	
-	# build histo name
 	if scope == 'company':
+		dict_list = stats['company']
 		title_scope = 'Company-Wide'
 	else:
+		dict_list = stats['rtm']
 		title_scope = f'RTM - {scope.capitalize()}'
+	
+	# collect speed lists
+	target_dict = next((d for d in dict_list if d['date'] == cur_week), None)
 	
 	x_label = 'Speeding Percentage'
 	y_label = 'Number Of Drivers'
@@ -108,7 +93,7 @@ def build_histogram(stats, scope, numBins=15, log_setting=False):
 	
 	plt.figure()
 	plt.hist(
-		filtered_cur_spd,
+		target_dict['spd_lst'],
 		bins=numBins,
 		edgecolor='black',
 		color=settings.swto_blue,
@@ -116,7 +101,7 @@ def build_histogram(stats, scope, numBins=15, log_setting=False):
 		log=log_setting
 		)
 	
-	plt.axvline(filtered_mean, label=f'{title_scope}: Average ({round(filtered_mean, 2)})', color='red')
+	plt.axvline(target_dict['average'], label=f'{title_scope}: Average ({target_dict["average"]})', color='red')
 	
 	plt.xlabel(x_label)
 	plt.ylabel(y_label)
@@ -124,7 +109,7 @@ def build_histogram(stats, scope, numBins=15, log_setting=False):
 	plt.legend()
 	
 	plt_type = f'Histogram_{scope.capitalize()}'
-	plt_path = save_plt(plt, stats['date'], plt_type)
+	plt_path = save_plt(plt, cur_week, plt_type)
 	
 	plt.show()
 	plt.close()
@@ -133,81 +118,60 @@ def build_histogram(stats, scope, numBins=15, log_setting=False):
 	return plt_path
 	
 def build_scatter(stats):
+	rtm_stats = stats['rtm']
+	date_list = db_utils.get_all_dates()
+	
+	x = []
+	y = []
+	
+	for date in date_list:
+		for dict in rtm_stats:
+			if dict['date'] == date:
+				for spd in dict['spd_lst']:
+					x.append(date)
+					y.append(spd)
+	
 	plt.figure()
 	plt.scatter(
-		stats['filtered_cur_spd']
+		x,
+		y
 		)
 	plt.show()
 	plt.close()
 	
 	return plt
 
-def build_line_chart(stat_selection, rtm='chris', filtered=True):
+def build_line_chart(stats, stat_selection, rtm='chris'):
 	if stat_selection == 'average':
 		stat_function = statistics.mean
 	else:
 		stat_function = statistics.median
 	
-	dates = get_date_list()
+	rtm_stats = stats['rtm']
+	company_stats = stats['company']
+	
+	dates = db_utils.get_all_dates()
 	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
+	
 	x_label = 'Date'
 	y_label = f'{stat_selection.capitalize()} Percent Speeding'
 	title = f'Historical Distribution of {stat_selection.capitalize()} Percent Speeding'
 	rtm_label = f'Rtm {stat_selection.capitalize()}'
 	company_label = f'Company {stat_selection.capitalize()}'
 	
-	conn = settings.db_connection()
-	c = conn.cursor()
-
-	# build rtm driver id list
-	rtm_id_lst = []
-	
-	sql = f'SELECT DISTINCT driver_id FROM {settings.driverInfo} WHERE rtm = ?'
-	value = (rtm,)
-	c.execute(sql, value)
-	results = c.fetchall()
-	for i in results:
-		rtm_id_lst.append(i[0])
-	
 	company_line_data = []
 	rtm_line_data = []
 	
 	for date in dates:	
-		sql = f'SELECT DISTINCT percent_speeding, driver_id FROM {settings.speedGaugeData} WHERE start_date = ?'
-		value = (date,)
-		c.execute(sql, value)
-		results = c.fetchall()
+		target_dict = None
+		for dict in rtm_stats:
+			if dict['date'] == date:
+				rtm_line_data.append(dict[stat_selection])
 		
-		company_spd_lst = [result[0] for result in results]
-		rtm_spd_lst = [result[0] for result in results if result[1] in rtm_id_lst]
+		for dict in company_stats:
+			if dict['date'] == date:
+				company_line_data.append(dict[stat_selection])
 		
-		company_avg = statistics.mean(company_spd_lst)
-		company_stdev = statistics.stdev(company_spd_lst)
-		company_max = company_avg + (3 * company_stdev)
-		
-		rtm_avg = statistics.mean(rtm_spd_lst)
-		rtm_stdev = statistics.stdev(rtm_spd_lst)
-		rtm_max = rtm_avg + (3 * rtm_stdev)
-		
-		filtered_company_spd_lst = [spd for spd in company_spd_lst if spd < company_max]
-		
-		filtered_rtm_spd_lst = [spd for spd in rtm_spd_lst if spd < rtm_max]
-			
-		company_stat = round(
-			stat_function(
-				filtered_company_spd_lst
-				), 2
-			)
-		company_line_data.append(company_stat)
-		rtm_stat = round(
-			stat_function(
-				filtered_rtm_spd_lst
-				),2
-			)
-		rtm_line_data.append(rtm_stat)
-	
-	rtm_lifetime_avg = round(statistics.mean(rtm_line_data), 2)
-
 	plt.figure(constrained_layout=True)
 	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
 	
@@ -225,6 +189,10 @@ def build_line_chart(stat_selection, rtm='chris', filtered=True):
 	# Rotate the labels for readability
 	plt.xticks(rotation=45)
 	
+	ax = plt.gca()
+	ax.yaxis.set_label_position("right")
+	ax.yaxis.tick_right()
+	
 	# Automatically adjust layout to avoid clipping
 	#plt.tight_layout()
 	#plt.subplots_adjust(bottom=0.15, left=0.15)  # Adjust bottom and left margins
@@ -240,8 +208,73 @@ def build_line_chart(stat_selection, rtm='chris', filtered=True):
 	plt.show()
 	plt.close()
 	plt.clf()
+	
+	return plt_path
+	
+	
+def build_percent_change_line_chart(stats, rtm='chris'):
+	
+	rtm_stats = stats['rtm']
+	company_stats = stats['company']
+	
+	dates = db_utils.get_all_dates()
+	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
+	
+	x_label = 'Date'
+	y_label = f'Change in Percent Speeding'
+	title = f'Historical Distribution Of Percent Change In Percent Speeding'
+	rtm_label = f'Rtm Percent Change'
+	company_label = f'Company Percent Change'
+	
+	company_line_data = []
+	rtm_line_data = []
+	
+	for date in dates:	
+		target_dict = None
+		for dict in rtm_stats:
+			if dict['date'] == date:
+				rtm_line_data.append(dict['avg_percent_change'])
 		
-	conn.close()
+		for dict in company_stats:
+			if dict['date'] == date:
+				company_line_data.append(dict['avg_percent_change'])
+		
+	plt.figure(constrained_layout=True)
+	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
+	
+	#plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
+	
+	# Set major locator to one tick per month
+	plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+	
+	# Format the date labels to show the month and year (e.g., Jan 2024)
+	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+	
+	# Rotate the labels for readability
+	plt.xticks(rotation=45)
+	
+	ax = plt.gca()
+	ax.yaxis.set_label_position("right")
+	ax.yaxis.tick_right()
+	
+	plt.axhline(y=0, color='red', linewidth=1, label='The 0 Line')
+	
+	# Automatically adjust layout to avoid clipping
+	#plt.tight_layout()
+	#plt.subplots_adjust(bottom=0.15, left=0.15)  # Adjust bottom and left margins
+	
+	plt.xlabel(x_label)
+	plt.ylabel(y_label)
+	plt.title(title)
+	plt.legend()
+	
+	plt_type = f'LineChart_percent_change'
+	plt_path = save_plt(plt, dates[-1], plt_type)
+	
+	plt.show()
+	plt.close()
+	plt.clf()
+	
 	return plt_path
 	
 def controller(stats, rtm='chris'):
@@ -250,15 +283,15 @@ def controller(stats, rtm='chris'):
 	
 	'''build histograms'''
 	# build rtm histogram
-	rtm_histo_path = build_histogram(rtm_stats, rtm, log_setting=False)
-	company_histo_path = build_histogram(company_stats, 'company', log_setting=False)
+	rtm_histo_path = build_histogram(stats, rtm, log_setting=False)
+	company_histo_path = build_histogram(stats, 'company', log_setting=False)
 	
 	'''build scatter plt'''
 	#rtm_scatter = build_scatter(rtm_stats)
 	
 	'''build line charts'''
-	avg_plt_path = build_line_chart('average', rtm='chris')
-	median_plt_path = build_line_chart('median', rtm='chris')
+	avg_plt_path = build_line_chart(stats, 'average', rtm='chris')
+	median_plt_path = build_line_chart(stats, 'median', rtm='chris')
 	
 	plt_paths = {
 		'rtm_histo_path': rtm_histo_path,
@@ -271,14 +304,22 @@ def controller(stats, rtm='chris'):
 	
 
 if __name__ == '__main__':
-	#prepare_line_data()
-	#temp()
-	#build_line_chart('average', rtm='chris')
+	from src import analysis
+	stats = analysis.build_analysis()
+
 	print(style.available)
-	for s in style.available:
-		style.use(s)
-		print(f'\n\n******{s}******')
-		build_line_chart('average', rtm='chris')
+	style.use('seaborn-poster')
+	#build_histogram(stats, 'chris')
+	#build_histogram(stats, 'company')
+	#build_scatter(stats)
+	build_line_chart(stats, 'average', rtm='chris')
+	build_percent_change_line_chart(stats)
+	#for s in style.available:
+		#style.use(s)
+		#print(s)
+		#build_line_chart(stats, 'average', rtm='chris')
+	pass
+
 	
 
 

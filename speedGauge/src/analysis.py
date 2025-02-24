@@ -11,6 +11,7 @@ import math
 import statistics
 import sqlite3
 import console
+from src import db_utils
 
 def filter_speed_list(spd_lst, max_stdev=3):
 	'''
@@ -33,344 +34,79 @@ def get_percent_change(val1, val2):
 	else:
 		return ((val1 - val2) / (val2)) * 100
 
-def build_stdev_buckets(avg, stdev, spd_list):
-	'''
-	returns a dictionary with key =
-	stdev1, stdev2, etc. then the value
-	is a list with distinct speeds from
-	the speed_list that fits into those
-	buckets
-	'''
-	
-	# build dictionary keys
-	stdev_buckets = {
-		f'stdev{i}': [] for i in range(1, 4)
-		}
-	stdev_buckets['stdev4_plus'] = []
-	
-	# sort speeds
-	for spd in spd_list:
-		stdev_bucket = math.floor(((abs(spd - avg)) / stdev) + 1)
-		bucket_key = f'stdev{stdev_bucket}'
-		
-		if bucket_key in stdev_buckets:
-			stdev_buckets[f'stdev{stdev_bucket}'].append(spd)
-		else:
-			stdev_buckets['stdev4_plus'].append(spd)
-	
-	# sort the lists so they look nice	
-	for bucket in stdev_buckets:
-		stdev_buckets[bucket].sort()
-	
-	return stdev_buckets
 
-def build_outlier_dicts(avg, stdev, high_iqr, start_date, max_stdev=4, rtm='chris'):
-	conn = settings.db_connection()
-	c = conn.cursor()
+def build_analysis():
+	date_list = db_utils.get_all_dates()
+	rtm_ids = db_utils.gather_driver_ids(rtm='chris')
+	company_ids = db_utils.gather_driver_ids(rtm='company')
 	
-	threshold = avg + (stdev * max_stdev)
-	company_data = []
+	# make list of dicts. key is date, value is filtered speed_list
 	rtm_data = []
+	company_data = []
 	
-	# build list of id's for rtm
-	sql = f'SELECT driver_id FROM {settings.driverInfo} WHERE rtm = ?'
-	value = (rtm,)
-	c.execute(sql, value)
-	results = c.fetchall()
-	
-	rtm_list = [id[0] for id in results]
-	
-	# build list of drivers over threshold
-	sql = f'SELECT driver_id, percent_speeding, driver_name FROM {settings.speedGaugeData} WHERE (percent_speeding > ? OR percent_speeding > ?) AND start_date = ?'
-	values = (threshold, high_iqr, start_date)
-	c.execute(sql, values)
-	results = c.fetchall()
-	
-	# build dictionaries
-	for result in results:
-		driver_data = {
-			'driver_id': result[0],
-			'percent_speeding': result[1],
-			'driver_name': result[2]
-		}
+	# build filtered speed list for company and rtm for each date
+	for date in date_list:
+		rtm_drivers = db_utils.gather_driver_data(rtm_ids, date)
+		company_drivers = db_utils.gather_driver_data(company_ids, date)
 		
-		# determine iqr status
-		if result[1] > high_iqr:
-			driver_data['high_iqr_status'] = True
+		rtm_spd_lst = filter_speed_list([dict['percent_speeding'] for dict in rtm_drivers])
+		rtm_avg = round(statistics.mean(rtm_spd_lst), 2)
+		rtm_median = round(statistics.median(rtm_spd_lst), 2)
+		
+		if len(rtm_data) == 0:
+			rtm_avg_percent_change = get_percent_change(rtm_avg, 0)
 		else:
-			driver_data['high_iqr_status'] = False
+			prev_avg = rtm_data[-1]['average']
+			rtm_avg_percent_change = get_percent_change(rtm_avg, prev_avg)
 		
-		iqr_differential = result[1] - high_iqr
-		driver_data['iqr_differential'] = round(float(iqr_differential), 2)
+		company_spd_lst = filter_speed_list([dict['percent_speeding'] for dict in company_drivers])
+		company_avg = round(statistics.mean(company_spd_lst), 2)
+		company_median = round(statistics.median(company_spd_lst), 2)
 		
-		# determine stdev status
-		driver_stdev = math.floor(((abs(result[1] - avg)) / stdev) + 1)
-		driver_data['driver_stdev'] = driver_stdev
-		
-		if driver_stdev >= max_stdev:
-			driver_data['stdev_status'] = True
+		if len(company_data) == 0:
+			company_avg_percent_change = get_percent_change(rtm_avg, 0)
 		else:
-			driver_data['stdev_status'] = False
+			prev_avg = company_data[-1]['average']
+			company_avg_percent_change = get_percent_change(company_avg, prev_avg)
 		
-		driver_data['stdev'] = driver_stdev
+		rtm_data.append(
+			{
+				'date': date,
+				'spd_lst': rtm_spd_lst,
+				'average': rtm_avg,
+				'median': rtm_median,
+				'avg_percent_change': rtm_avg_percent_change
+			}
+		)
 		
-		if result[0] in rtm_list:
-			rtm_data.append(driver_data)
-		
-		company_data.append(driver_data)
+		company_data.append(
+			{
+				'date': date,
+				'spd_lst': company_spd_lst,
+				'average': company_avg,
+				'median': company_median,
+				'avg_percent_change': company_avg_percent_change
+			}
+		)
 	
-	conn.close()
-	
-	sorted_company_data = sorted(company_data, key = lambda x: x['percent_speeding'])
-	
-	sorted_rtm_data = sorted(rtm_data, key = lambda x: x['percent_speeding'])
-	
-	final_dict = {
-		'company': sorted_company_data,
-		'rtm': sorted_rtm_data
-	}
-	return final_dict
-	
-
-def build_stats(cur_spd, prev_spd, date):
-	'''
-	returns a dictionary of stats for
-	the incoming lists of speeds. so
-	current_spd is the list we really
-	want to know the stats for, and 
-	prev_spd is last weeks speeds that
-	we use for comparison.
-	'''
-	stdev_outlier_spd = []
-	iqr_outlier_spd = []
-	
-	# build speed list without high stdev that mess up analysis
-	filtered_cur_speed = filter_speed_list(cur_spd)
-	filtered_prev_speed = filter_speed_list(prev_spd)
-	
-	# get mode of data
-	cur_mode = statistics.mode(filtered_cur_speed)
-	prev_mode = statistics.mode(filtered_prev_speed)
-	
-	# get avg stats
-	avg1 = statistics.mean(filtered_cur_speed)
-	avg2 = statistics.mean(filtered_prev_speed)
-	stdev1 = statistics.stdev(filtered_cur_speed)
-	stdev2 = statistics.stdev(filtered_prev_speed)
-	
-	avg_abs_change = avg1 - avg2
-	avg_percent_change = get_percent_change(avg1, avg2)
-	
-	# build standard deviation buckets
-	stdev_buckets = build_stdev_buckets(avg1, stdev1, cur_spd)
-	
-	# get median stats
-	median1 = statistics.median(filtered_cur_speed)
-	median2 = statistics.median(filtered_prev_speed)
-	
-	median_abs_change = median1 -  median2
-	median_percent_change = get_percent_change(median1, median2)
-	
-	# iqr stuff to find/filter outliers
-	# just google what iqr is
-	q1 = np.percentile(filtered_cur_speed, 25)
-	t = 0.75 * (len(filtered_cur_speed) + 1)
-	tlow = math.floor(t)
-	thigh = math.ceil(t)
-	#q3 = (spd1[tlow]+spd1[thigh]) / 2
-	q3 = np.percentile(filtered_cur_speed, 75)
-	iqr = q3 - q1
-	high_range_iqr = q3 + (iqr * 1.5)
-	low_range_iqr = q1 - (iqr * 1.5)
-	
-	iqr_outlier_count = 0
-	for spd in cur_spd:
-		if spd > high_range_iqr:
-			iqr_outlier_count += 1
-	
-	outlier_dict_list = build_outlier_dicts(avg1, stdev1, high_range_iqr, date)
-	
-	stats = {
-		'date': date,
-		'sample_size': len(filtered_cur_speed),
-		'stdev': round(stdev1, 2),
-		'stdev_buckets': stdev_buckets,
-		'1std': len(stdev_buckets['stdev1']),
-		'2std': len(stdev_buckets['stdev2']),
-		'3std': len(stdev_buckets['stdev3']),
-		'4stdplus': len(stdev_buckets['stdev4_plus']),
-		'cur_avg': round(avg1, 2),
-		'prev_avg': round(avg2, 2),
-		'avg_abs_change': round(avg_abs_change, 2),
-		'avg_percent_change': round(avg_percent_change, 2),
-		'cur_median': round(median1, 2),
-		'prev_median': round(median2, 2),
-		'median_abs_change': round(median_abs_change, 2),
-		'median_percent_change': round(median_percent_change, 2),
-		'q1': round(q1, 2),
-		'q3': round(q3, 2),
-		'iqr': round(iqr, 2),
-		'high_range_iqr': round(high_range_iqr, 2),
-		'low_range_iqr': round(low_range_iqr, 2),
-		'cur_mode': cur_mode,
-		'prev_mode': prev_mode,
-		'raw_cur_spd': cur_spd,
-		'filtered_cur_spd': filtered_cur_speed,
-		'raw_prev_spd': prev_spd,
-		'filtered_prev_spd': filtered_prev_speed,
-		'num_iqr_outliers': iqr_outlier_count,
-		'outlier_dict_list': outlier_dict_list
-	}
-	
-	return stats
-
-def prepare_speeds(date, rtm_selection='chris', max_stdev=3):
-	'''
-	returns a list of percent_speeding
-	for rtm and company for a given 
-	date. this is extra good bc now i 
-	can use this for any date i want in
-	da future.
-	'''
-
-	conn = settings.db_connection()
-	c = conn.cursor()
-	tbl = settings.speedGaugeData
-	
-	company_ids = []
-	rtm_ids = []
-	
-	rtm_speed = []
-	company_speed = []
-	none_spds = []
-	
-	# get rtm and company driver ids
-	company_ids = []
-	rtm_ids = []
-	sql = f'SELECT DISTINCT driver_id, rtm FROM {settings.driverInfo}'
-	c.execute(sql)
-	results = c.fetchall()
-	for result in results:
-		driver_id = result[0]
-		rtm = result[1]
-		company_ids.append(driver_id)
-		
-		if rtm == rtm_selection:
-			rtm_ids.append(driver_id)
-	
-	# collect percent_speeding for the week
-	for driver_id in company_ids:
-		sql = f'SELECT percent_speeding FROM {tbl} WHERE start_date = ? AND driver_id = ?'
-		values = (date, driver_id)
-		c.execute(sql, values)
-		result = c.fetchone()
-		
-		if result != None:
-			percent_speeding = result[0]
-			company_speed.append(percent_speeding)
-			
-			if driver_id in rtm_ids:
-				rtm_speed.append(percent_speeding)
-		
-		else:
-			none_spds.append(driver_id)
-	
-	rtm_speed.sort()
-	company_speed.sort()
-	
-	# prepare the info to ship out
 	data_packet = {
-		'rtm': rtm_speed,
-		'company': company_speed
+		'rtm': rtm_data,
+		'company': company_data,
+		'rtm_name': db_utils.get_manager(rtm_ids[0])
 	}
 	
-	# print out a report
-	print('\n************************')
-	print('Analysis: Prepare Speeds Report')
-	print(f'Date: {date}')
-	print(f'RTM driver count: {len(rtm_ids)}')
-	print(f'RTM speed count: {len(rtm_speed)}')
-	print(f'Company driver count: {len(company_ids)}')
-	print(f'Company speed count: {len(company_speed)}')
-	print('driver_id with None for percent_speeding:')
-	for i in none_spds:
-		sql = f'SELECT driver_name FROM {settings.driverInfo} WHERE driver_id = ?'
-		value = (i,)
-		c.execute(sql, value)
-		result = c.fetchone()
-		if result != None:
-			driver_name = result[0]
-		else:
-			driver_name = None
-		
-		sql = f'SELECT DISTINCT human_readable_start_date FROM {settings.speedGaugeData} WHERE driver_id = ? ORDER BY formated_start_date ASC'
-		value = (i,)
-		c.execute(sql, value)
-		result = c.fetchall()
-		print(f'  {i}: {driver_name}')
-		print(f'  Dates for this driver:')
-		print(f'  {result}')
-	print('************************\n')
-	
-	conn.close()
-	
-	# send it
 	return data_packet
+		
+		
+	
+		
 
-def get_date_list():
-	'''
-	returns a list of dates in the db 
-	in descending order. Newest date
-	will be index 0, last week will be
-	index 1, etc
-	'''
-	
-	conn = settings.db_connection()
-	c = conn.cursor()
-	
-	sql = f'SELECT DISTINCT start_date FROM {settings.speedGaugeData} ORDER BY start_date DESC'
-	c.execute(sql)
-	results = c.fetchall()
-	
-	date_list = [date[0] for date in results]
-	
-	return date_list
-	
-def build_analysis(rtm='chris'):
-	conn = settings.db_connection()
-	c = conn.cursor()
-	
-	# get dates for analysis
-	date_list = get_date_list()
-	current_date = date_list[0]
-	previous_date = date_list[1]
-	
-	# get speed lists
-	current_speeds = prepare_speeds(current_date, rtm_selection=rtm)
-	prev_speeds = prepare_speeds(previous_date, rtm_selection=rtm)
-	
-	# separate out the speed lists
-	current_speeds_rtm = current_speeds['rtm']
-	current_speeds_company = current_speeds['company']
-	
-	prev_speeds_rtm = prev_speeds['rtm']
-	prev_speeds_company = prev_speeds['company']
-	
-	company_stats = build_stats(current_speeds_company, prev_speeds_company, current_date)
-	rtm_stats = build_stats(current_speeds_rtm, prev_speeds_rtm, current_date)
-	
-	stats_bundle = {
-		'company': company_stats,
-		'rtm': rtm_stats,
-		'rtm_name': rtm
-	}
-	
-	return stats_bundle
 
 # auto-reload module to prevent cache issues
 if 'analysis' in sys.modules:
 	importlib.reload(sys.modules['analysis'])
 
 if __name__ == '__main__':
-	a = build_analysis()
 	
+	a = build_analysis()
+
