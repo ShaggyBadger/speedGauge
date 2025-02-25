@@ -75,7 +75,7 @@ def build_analysis():
 				'spd_lst': rtm_spd_lst,
 				'average': rtm_avg,
 				'median': rtm_median,
-				'avg_percent_change': rtm_avg_percent_change
+				'avg_percent_change': round(rtm_avg_percent_change,2)
 			}
 		)
 		
@@ -85,7 +85,7 @@ def build_analysis():
 				'spd_lst': company_spd_lst,
 				'average': company_avg,
 				'median': company_median,
-				'avg_percent_change': company_avg_percent_change
+				'avg_percent_change': round(company_avg_percent_change, 2)
 			}
 		)
 	

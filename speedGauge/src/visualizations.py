@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import settings
 import matplotlib.pyplot as plt
 from matplotlib import style
-style.use('seaborn-talk')
+style.use('Solarize_Light2')
 import matplotlib.dates as mdates
 from datetime import datetime
 from pathlib import Path
@@ -302,22 +302,30 @@ def controller(stats, rtm='chris'):
 	
 	return plt_paths
 	
-
+def all_chart_styles(stats):
+		for s in style.available:
+			style.use(s)
+			print(s)
+			build_line_chart(stats, 'average', rtm='chris')
+			build_histogram(stats, 'company')
+			build_histogram(stats, 'chris')
+			build_scatter(stats)
+			print('****************\n')
+	
 if __name__ == '__main__':
 	from src import analysis
 	stats = analysis.build_analysis()
 
 	print(style.available)
-	style.use('seaborn-poster')
+	#style.use('seaborn-poster')
 	#build_histogram(stats, 'chris')
 	#build_histogram(stats, 'company')
 	#build_scatter(stats)
 	build_line_chart(stats, 'average', rtm='chris')
-	build_percent_change_line_chart(stats)
-	#for s in style.available:
-		#style.use(s)
-		#print(s)
-		#build_line_chart(stats, 'average', rtm='chris')
+	#build_percent_change_line_chart(stats)
+	
+	#all_chart_styles(stats)
+
 	pass
 
 	

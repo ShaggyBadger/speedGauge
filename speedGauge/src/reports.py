@@ -12,6 +12,7 @@ from reportlab.lib.units import inch
 from pathlib import Path
 import sys, os
 from datetime import datetime
+from src import db_utils
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -876,13 +877,20 @@ def create_report(stats, plt_paths):
 	
 if __name__ == '__main__':
 	import json
+	date_list = db_utils.get_all_dates()
 	conn = settings.db_connection()
 	c = conn.cursor()
-	sql = f'SELECT start_date, rtm, stats, plt_paths FROM {settings.analysisStorage} ORDER BY start_date'
-	c.execute(sql)
+	sql = f'SELECT start_date, rtm, stats, plt_paths FROM {settings.analysisStorage} WHERE start_date = ?'
+	value = (date_list[-1],)
+	c.execute(sql, value)
 	result = c.fetchone()
+
 	stats = json.loads(result[2])
 	rtm_stats = stats['rtm']
+	company_stats = stats['company']
+	
+	for i in rtm_stats:
+		print(i)
 	
 	plt_paths = json.loads(result[3])
 	

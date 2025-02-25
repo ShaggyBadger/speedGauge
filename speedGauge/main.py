@@ -84,7 +84,7 @@ def weekly_analysis():
 	plt_paths_json = json.dumps(plt_paths, default=str)
 	
 	# save json data in the db
-	db_utils.store_json_data(stats_json, plt_paths_json, rtm_name, start_date)		
+	db_utils.store_json_data(stats_json, plt_paths_json, rtm_name, db_utils.get_max_date())		
 	
 	report_path = reports.create_report(stat_packet, plt_paths)
 
