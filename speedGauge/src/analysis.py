@@ -35,7 +35,7 @@ def get_percent_change(val1, val2):
 		return ((val1 - val2) / (val2)) * 100
 
 
-def build_analysis():
+def build_analysis(rtm='chris'):
 	date_list = db_utils.get_all_dates()
 	rtm_ids = db_utils.gather_driver_ids(rtm='chris')
 	company_ids = db_utils.gather_driver_ids(rtm='company')
@@ -72,6 +72,7 @@ def build_analysis():
 		rtm_data.append(
 			{
 				'date': date,
+				'rtm_name': rtm.capitalize(),
 				'spd_lst': rtm_spd_lst,
 				'average': rtm_avg,
 				'median': rtm_median,
