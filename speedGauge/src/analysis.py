@@ -34,7 +34,6 @@ def get_percent_change(val1, val2):
 	else:
 		return ((val1 - val2) / (val2)) * 100
 
-
 def build_analysis(rtm='chris'):
 	date_list = db_utils.get_all_dates()
 	rtm_ids = db_utils.gather_driver_ids(rtm='chris')

@@ -12,6 +12,7 @@ from reportlab.lib.units import inch
 from pathlib import Path
 import sys, os
 from datetime import datetime
+import numpy as np
 
 
 # Add the project root directory to the Python path
@@ -77,6 +78,12 @@ def build_output_path(date, rtm='chris'):
 	
 	return file_path
 
+def bld_avg_trend(trend):
+	if trend < 0:
+		return Paragraph(f'<font color="{colors.green}"><strong>{round(trend, 2)} {settings.down_arrow}</strong></font>')
+	else:
+		return Paragraph(f'<font color="{colors.green}"><strong>{round(trend, 2)} -</strong></font>')
+
 def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 	"""
 	Format a statistic with color and optional arrows.
@@ -110,6 +117,33 @@ def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 	# Create styled paragraph
 	return Paragraph(f'<font color="{color}"><strong>{formatted_value}</strong></font>', styles['BodyText'])
 
+def predict_next_week(dict_list):
+	'''
+	Predicts the average percentage speeding for the next week using linear regression.
+	
+	This function takes a list of dictionaries, each containing a weekly average,
+	and fits a simple linear regression model to estimate the trend. It then 
+	predicts the value for the next week.
+	
+	Parameters:
+		dict_list (list of dict): A list of dictionaries, each containing a key 'average' representing the weekly average.
+	
+	Returns:
+		tuple: A tuple containing:
+			- predicted_avg (float): The predicted average for the next week, rounded to two decimal places.
+			- slope (float): The slope of the fitted regression line, indicating the rate of change.
+	'''
+	avg_list = [dict['average'] for dict in dict_list]
+	
+	week_list = [i +1 for i in range(len(avg_list))]
+	
+	slope, intercept, = np.polyfit(week_list, avg_list, 1)
+	
+	next_week = week_list[-1] + 1
+	predicted_avg = round(slope * next_week + intercept, 2)
+	
+	return predicted_avg, slope
+
 def create_overview_frame(data_packet):
 	stats = data_packet['stats']
 	plt_paths = data_packet['plt_paths']
@@ -122,6 +156,7 @@ def create_overview_frame(data_packet):
 	rtm_stats = stats['rtm']
 	cur_week_rtm = rtm_stats[-1]
 	rtm = stats['rtm_name']
+	prev_week_rtm = rtm_stats[-2]
 	company_stats = stats['company']
 	cur_week_company = company_stats[-1]
 	
@@ -171,20 +206,31 @@ def create_overview_frame(data_packet):
 	content.append(Spacer(1,0.5*inch))
 	
 	# build rtm subtable
-	cur_wk_avg_rtm = bld_stat_color(cur_week_rtm['average'], threshold=0.4, arrow=False, percentage=True)
+	prev_prediction_full = predict_next_week(rtm_stats[:-1])
+	cur_prediction_full = predict_next_week(rtm_stats)
 	
-	cur_wk_avg_company = bld_stat_color(cur_week_company['average'], threshold=0.4, arrow=False, percentage=True)
+	cur_prediction = bld_stat_color(cur_prediction_full[0], threshold=0.4, arrow=False, percentage=True)
+
+	prev_prediction = bld_stat_color(prev_prediction_full[0], threshold=0.4, arrow=False, percentage=True)
+	
+	avg_trend = bld_avg_trend(cur_prediction_full[1])
+	
+	prev_trend = bld_stat_color(prev_prediction_full[1], threshold=0, arrow=True, percentage=False)
+	
+	cur_wk_avg_rtm = bld_stat_color(cur_week_rtm['average'], threshold=0.4, arrow=False, percentage=True)
+
+	prev_wk_avg_rtm = bld_stat_color(prev_week_rtm['average'], threshold=0.4, arrow=False, percentage=True)
 	
 	percent_change_avg_rtm = bld_stat_color(cur_week_rtm['avg_percent_change'], threshold=None, arrow=True, percentage=True)
 	
-	percent_change_avg_company = bld_stat_color(cur_week_company['avg_percent_change'], threshold=None, arrow=True, percentage=True)
+	prev_percent_change_avg_rtm = bld_stat_color(prev_week_rtm['avg_percent_change'], threshold=None, arrow=True, percentage=True)
 	
 	abs_change_rtm = bld_stat_color(cur_week_rtm['avg_abs_change'], threshold=None, arrow=True, percentage=False)
 	
-	abs_change_company = bld_stat_color(cur_week_company['avg_abs_change'], threshold=None, arrow=True, percentage=False)
+	prev_abs_change_rtm = bld_stat_color(prev_week_rtm['avg_abs_change'], threshold=None, arrow=True, percentage=False)
 	
-	
-	rtm_sub_tbl_data = [
+	# buld cur week subtable
+	cur_sub_tbl_data = [
 		[
 			'Average percent_speeding', 
 			cur_wk_avg_rtm
@@ -196,52 +242,72 @@ def create_overview_frame(data_packet):
 		[
 			'Absolute Change In Average',
 			abs_change_rtm
-		]
-	]
-	rtm_sub_tbl = Table(
-		rtm_sub_tbl_data
-		)
-		
-	# build company subtable
-	company_sub_tbl_data = [
-		[
-			'Average percent_speeding',
-			cur_week_company['average']
 		],
 		[
-			'Percent Change in Average',
-			cur_week_company['avg_percent_change']
+			'Predicted Average Next Week',
+			cur_prediction
+		],
+		[
+			'Average Trend Direction',
+			avg_trend
 		]
 	]
-	company_sub_tbl = Table(
-		company_sub_tbl_data
+	cur_sub_tbl = Table(
+		cur_sub_tbl_data
+		)
+		
+	# build prev week subtable
+	prev_sub_tbl_data = [
+		[
+			'Average percent_speeding', 
+			prev_wk_avg_rtm
+		],
+		[
+			'Percent Change In Average',
+			prev_percent_change_avg_rtm
+			],
+		[
+			'Absolute Change In Average',
+			prev_abs_change_rtm
+		],
+		[
+			'Predicted Average Next Week',
+			prev_prediction
+		],
+		[
+			'Trend Value',
+			prev_trend
+		]
+	]
+	prev_sub_tbl = Table(
+		prev_sub_tbl_data
 		)
 	
 	# build analysis table
-	rtm_header = Paragraph(f'<font color="white"><strong>RTM Market Stats</strong></font>', styles['centeredText'])
+	cur_header = Paragraph(f'<font color="white"><strong>Current RTM Market Stats</strong></font>', styles['centeredText'])
 	
-	company_header = Paragraph(f'<font color="white"><strong>Company Stats</strong></font>', styles['centeredText'])
+	prev_header = Paragraph(f'<font color="white"><strong>Last Week Stats</strong></font>', styles['centeredText'])
 	analysis_tbl_data = [
 		[
 			'',
-			rtm_header,
+			cur_header,
 			'',
-			company_header,
+			prev_header,
 			''
 		],
 		['',
-		rtm_sub_tbl,
+		cur_sub_tbl,
 		'',
-		company_sub_tbl,
+		prev_sub_tbl,
 		'']
 		]
 	analysis_tbl = Table(
 		analysis_tbl_data,
 		colWidths = [
 			page_width * 0.1,
-			page_width * 0.35,
-			page_width * 0.05,
-			page_width * 0.35,
+			page_width * 0.39,
+			page_width * 0.02,
+			page_width * 0.39,
 			page_width * 0.1
 			]
 		)
@@ -255,7 +321,11 @@ def create_overview_frame(data_packet):
 		]
 	)
 	
-	rtm_sub_tbl.setStyle([
+	cur_sub_tbl.setStyle([
+		('ROWBACKGROUNDS', (0,0), (-1,-1), ['#ffffff', '#d3d3d3'])
+	])
+
+	prev_sub_tbl.setStyle([
 		('ROWBACKGROUNDS', (0,0), (-1,-1), ['#ffffff', '#d3d3d3'])
 	])
 	
@@ -265,96 +335,6 @@ def create_overview_frame(data_packet):
 
 
 
-def stdev_tbl(data_packet):
-	stats = data_packet['stats']
-	page_width = letter[0]
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-	company_stats = stats['company']
-	date = rtm_stats['date']
-	plt_paths = data_packet['plt_paths']
-	styles = data_packet['styles']
-	doc = data_packet['doc']
-	
-	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
-	
-	''' tbl data stuff? '''
-	col1_w = page_width * .3
-	col2_w = page_width * .1
-	
-	'''stdev data'''
-	a1 = Paragraph(f'Standard Deviation:')
-	b1 = Paragraph(f'<font color="{colors.black}"><strong>{rtm_stats["stdev"]}</strong></font>')
-	a2 = Paragraph(f'Number of drivers within 1 standard deviation of the mean:')
-	b2 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["1std"]}</strong></font>')
-	a3 = Paragraph(f'Number of drivers within 2 standard deviations of the mean:')
-	b3 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["2std"]}</strong></font>')
-	a4 = Paragraph(f'Number of drivers within 3 standard deviations of the mean:')
-	b4 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["3std"]}</strong></font>')
-	a5 = Paragraph(f'Number of drivers 4+ standard deviations from the mean:')
-	b5 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["4stdplus"]}</strong></font>')
-	stdev_explain = Paragraph(f'Standard deviation (STDEV) measures how much something varies from the average. STDEV helps identify these extremes — 1 STDEV is typical in a data set, 2 is unusual, and 3+ indicates a major outlier. Either someone has a heavy foot or there might be something weird going on with the tracking system.', styles['Code'])
-	
-	sub_tbl_data = [
-		[a1, b1],
-		[a2, b2],
-		[a3, b3],
-		[a4, b4],
-		[a5, b5]
-		]
-	
-	sub_tbl = Table(
-		sub_tbl_data,
-		colWidths = [col1_w, col2_w]
-		)
-		
-	style = TableStyle([
-		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.lightgrey, colors.white])])
-	sub_tbl.setStyle(style)
-
-	''' build the main table '''
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-		
-	col2_head = Paragraph(f'<strong>Standard Deviation Primer</strong>', styles['centeredText'])
-	col3_head = Paragraph(f'<strong>Standard Deviation Stats</strong>', styles['centeredText'])
-	
-	# each row of data gets a list in tbl_data
-	tbl_data = [
-	[
-		'',
-		col2_head,
-		col3_head,
-		''
-		],
-	[
-		'',
-		stdev_explain,
-		sub_tbl,
-		''
-		]
-	]
-	
-	table = Table(
-		tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
-			]
-		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE')
-		])
-	table.setStyle(style)
-	
-	return table
-	
 
 
 def create_report(stats, plt_paths):
@@ -403,14 +383,7 @@ if __name__ == '__main__':
 	rtm_stats = stats['rtm']
 	company_stats = stats['company']
 	
-	for i in rtm_stats[0]:
-		print(i)
-	
 	plt_paths = json.loads(result[3])
-	
-	# temporary adjustment to fix my mistake from visualizatikns. mistake is saved in the db, so we fix it here
-	#median_plt_path = plt_paths['median_plt_pth']
-	#plt_paths['median_plt_path'] = median_plt_path
 	conn.close()
 
 	
