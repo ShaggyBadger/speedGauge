@@ -12,6 +12,16 @@ import matplotlib.pyplot as plt
 import console
 import json
 
+def inspection():
+	import inspect
+	functions = inspect.getmembers(db_utils, inspect.isfunction)
+	
+	for name, func in functions:
+		docstring = inspect.getdoc(func) or 'no docstring provided'
+		print(f'{name}\n')
+		print(docstring)
+		print('\n******\n')
+
 def idr(enter_driver=True, driver_id=30150643):
 	'''
 	this can work from makn seledtion
@@ -67,7 +77,6 @@ def weekly_analysis():
 	rtm_analysis = stat_packet['rtm']
 	company_analysis = stat_packet['company']
 	rtm_name = stat_packet['rtm_name']
-	start_date = rtm_analysis['date']
 
 	plt_paths = visualizations.controller(stat_packet)
 	
@@ -75,7 +84,7 @@ def weekly_analysis():
 	plt_paths_json = json.dumps(plt_paths, default=str)
 	
 	# save json data in the db
-	db_utils.store_json_data(stats_json, plt_paths_json, rtm_name, start_date)		
+	db_utils.store_json_data(stats_json, plt_paths_json, rtm_name, db_utils.get_max_date())		
 	
 	report_path = reports.create_report(stat_packet, plt_paths)
 

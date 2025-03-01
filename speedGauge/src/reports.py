@@ -12,9 +12,12 @@ from reportlab.lib.units import inch
 from pathlib import Path
 import sys, os
 from datetime import datetime
+import numpy as np
+
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from src import db_utils
 
 # Now you can import settings
 import settings
@@ -40,6 +43,11 @@ title_style = ParagraphStyle(
 right_aligned_style = ParagraphStyle(
 	name="RightAligned",
 	alignment=TA_RIGHT
+)
+
+CenteredAligned = ParagraphStyle(
+	name='CenteredAligned',
+	alignment=TA_CENTER
 )
 
 
@@ -70,79 +78,11 @@ def build_output_path(date, rtm='chris'):
 	
 	return file_path
 
-def create_overview_frame(data_packet):
-	page_width = letter[0]
-	stats = data_packet['stats']
-
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-
-	company_stats = stats['company']
-	date = rtm_stats['date']
-	
-	plt_paths = data_packet['plt_paths']
-	styles = data_packet['styles']
-	doc = data_packet['doc']
-	
-	content = []
-	
-	rtm_histogram_path = str(plt_paths['rtm_histo_path'])
-	company_histogram_path = str(plt_paths['company_histo_path'])
-	
-	content.append(Paragraph(f'Overview for {rtm}', title_style))
-	content.append(Paragraph(f'Week begin date: {start_date}', title_style))
-	content.append(Spacer(1, 20))
-	
-	content.append(Paragraph(f'Number of drivers for RTM {stats["rtm_name"].capitalize()} in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
-	content.append(Paragraph(f'Number of drivers for the whole company in this analysis: {company_stats["sample_size"]}'))
-	
-	content.append(Spacer(1,10))
-	content.append(HRFlowable(width="75%", thickness=1, color="black", spaceBefore=10, spaceAfter=10))
-	
-	rtm_img = Image(str(rtm_histogram_path), width=3.5*inch, height=2.1*inch)
-
-	company_img = Image(company_histogram_path, width=3.5*inch, height=2.1*inch)
-	
-	rtm_hist_head = Paragraph(f'RTM Histogram Of Speeding Percents', styles['centeredText'])
-	comp_hist_head = Paragraph(f'Company-Wide Histogram Of Speeding Percents', styles['centeredText'])
-	
-	tbl_data = [
-		[
-			'',
-			rtm_hist_head,
-			comp_hist_head,
-			''
-			],
-		[
-			'',
-			rtm_img,
-			company_img,
-			''
-			]
-		]
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-	table = Table(
-		tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
-			]
-		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE')
-		])
-	table.setStyle(style)
-	content.append(table)
-
-	content.append(Spacer(1,0.5*inch))
-	
-	return content
+def bld_avg_trend(trend):
+	if trend < 0:
+		return Paragraph(f'<font color="{colors.green}"><strong>{round(trend, 2)} {settings.down_arrow}</strong></font>')
+	else:
+		return Paragraph(f'<font color="{colors.green}"><strong>{round(trend, 2)} -</strong></font>')
 
 def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 	"""
@@ -177,667 +117,230 @@ def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 	# Create styled paragraph
 	return Paragraph(f'<font color="{color}"><strong>{formatted_value}</strong></font>', styles['BodyText'])
 
-def stdev_tbl(data_packet):
+def predict_next_week(dict_list):
+	'''
+	Predicts the average percentage speeding for the next week using linear regression.
+	
+	This function takes a list of dictionaries, each containing a weekly average,
+	and fits a simple linear regression model to estimate the trend. It then 
+	predicts the value for the next week.
+	
+	Parameters:
+		dict_list (list of dict): A list of dictionaries, each containing a key 'average' representing the weekly average.
+	
+	Returns:
+		tuple: A tuple containing:
+			- predicted_avg (float): The predicted average for the next week, rounded to two decimal places.
+			- slope (float): The slope of the fitted regression line, indicating the rate of change.
+	'''
+	avg_list = [dict['average'] for dict in dict_list]
+	
+	week_list = [i +1 for i in range(len(avg_list))]
+	
+	slope, intercept, = np.polyfit(week_list, avg_list, 1)
+	
+	next_week = week_list[-1] + 1
+	predicted_avg = round(slope * next_week + intercept, 2)
+	
+	return predicted_avg, slope
+
+def create_overview_frame(data_packet):
 	stats = data_packet['stats']
-	page_width = letter[0]
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-	company_stats = stats['company']
-	date = rtm_stats['date']
 	plt_paths = data_packet['plt_paths']
 	styles = data_packet['styles']
+	date = db_utils.get_max_date()
 	doc = data_packet['doc']
 	
-	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
-	
-	''' tbl data stuff? '''
-	col1_w = page_width * .3
-	col2_w = page_width * .1
-	
-	'''stdev data'''
-	a1 = Paragraph(f'Standard Deviation:')
-	b1 = Paragraph(f'<font color="{colors.black}"><strong>{rtm_stats["stdev"]}</strong></font>')
-	a2 = Paragraph(f'Number of drivers within 1 standard deviation of the mean:')
-	b2 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["1std"]}</strong></font>')
-	a3 = Paragraph(f'Number of drivers within 2 standard deviations of the mean:')
-	b3 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["2std"]}</strong></font>')
-	a4 = Paragraph(f'Number of drivers within 3 standard deviations of the mean:')
-	b4 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["3std"]}</strong></font>')
-	a5 = Paragraph(f'Number of drivers 4+ standard deviations from the mean:')
-	b5 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["4stdplus"]}</strong></font>')
-	stdev_explain = Paragraph(f'Standard deviation (STDEV) measures how much something varies from the average. STDEV helps identify these extremes — 1 STDEV is typical in a data set, 2 is unusual, and 3+ indicates a major outlier. Either someone has a heavy foot or there might be something weird going on with the tracking system.', styles['Code'])
-	
-	sub_tbl_data = [
-		[a1, b1],
-		[a2, b2],
-		[a3, b3],
-		[a4, b4],
-		[a5, b5]
-		]
-	
-	sub_tbl = Table(
-		sub_tbl_data,
-		colWidths = [col1_w, col2_w]
-		)
-		
-	style = TableStyle([
-		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.lightgrey, colors.white])])
-	sub_tbl.setStyle(style)
+	page_width = letter[0]
 
-	''' build the main table '''
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-		
-	col2_head = Paragraph(f'<strong>Standard Deviation Primer</strong>', styles['centeredText'])
-	col3_head = Paragraph(f'<strong>Standard Deviation Stats</strong>', styles['centeredText'])
+	rtm_stats = stats['rtm']
+	cur_week_rtm = rtm_stats[-1]
+	rtm = stats['rtm_name']
+	prev_week_rtm = rtm_stats[-2]
+	company_stats = stats['company']
+	cur_week_company = company_stats[-1]
 	
-	# each row of data gets a list in tbl_data
-	tbl_data = [
-	[
-		'',
-		col2_head,
-		col3_head,
-		''
-		],
-	[
-		'',
-		stdev_explain,
-		sub_tbl,
-		''
-		]
-	]
+	avg_plt_path = str(plt_paths['avg_plt_path'])
 	
-	table = Table(
-		tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
-			]
-		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE')
-		])
-	table.setStyle(style)
-	
-	return table
-	
-
-def create_avg_frame(data_packet):
 	content = []
-	spacer = Spacer(1, 0.2*inch)
-	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
-	page_width = letter[0]
-	stats = data_packet['stats']
-
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-	company_stats = stats['company']
-	date = rtm_stats['date']
-	plt_paths = data_packet['plt_paths']
-	styles = data_packet['styles']
-	doc = data_packet['doc']
 	
-	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
-	red = settings.red
-	green = settings.green
-	warning_orange = settings.warning_orange
+	line_chart_img = Image(avg_plt_path)
 	
-	'''title for page'''
-	page_title = Paragraph('Averages Analyitics', title_style)
-	content.append(page_title)
-	content.append(spacer)
+	# scale the image
+	img_w = line_chart_img.drawWidth
+	img_h = line_chart_img.drawHeight
+	ratio = img_w / img_h
 	
+	new_w = page_width * 0.8
+	new_h = new_w / ratio
 	
-	''' tbl data stuff? '''
-	col1_w = page_width * .3
-	col2_w = page_width * .1
+	line_chart_img.drawWidth = new_w
+	line_chart_img.drawHeight = new_h
 	
-	''' build the sub_tbl for col2 '''
-	# mk one row per stat for averages with 2 columns
-
-	# a1 is column a row 1 etc
-	a0 = Paragraph(f'<font color={colors.white}>Rtm Average Stats</font>')
-	b0 = Paragraph('')
-	a1 = Paragraph(f'Current Rtm Average:')
-	b1 = bld_stat_color(rtm_stats['cur_avg'], threshold=0.4)
-	a2 = Paragraph(f'Last Week Rtm Average:')
-	b2 = bld_stat_color(rtm_stats['prev_avg'], threshold=0.4)
-	a3 = Paragraph(f'Absolute Change in percent_speeding:')
-	b3 = bld_stat_color(rtm_stats['avg_abs_change'], arrow=True, percentage=False)
-	a4 = Paragraph(f'Percent Change In percent_speeding:')
-	b4 = bld_stat_color(rtm_stats['avg_percent_change'], arrow=True)
-
-	a5 = Paragraph('')
-	b5 = Paragraph('')
-	a6 = Paragraph(f'<font color={colors.white}>Company Average Stats</font>')
-	b6 = Paragraph('')
-	a7 = Paragraph(f'Current Company Average:')
-	b7 = bld_stat_color(company_stats['cur_avg'], threshold=0.4, arrow=False, percentage=False)
-	a8 = Paragraph(f'Previous Week Company Average:')
-	b8 = bld_stat_color(company_stats['prev_avg'], threshold=0.4, arrow=False, percentage=False)
-	a9 = Paragraph(f'Absolute Value of Change in Company Average:')
-	b9 = bld_stat_color(company_stats['avg_abs_change'], threshold=None, arrow=True, percentage=False)
-	a10 = Paragraph(f'Percent Change in Company Average:')
-	b10 = bld_stat_color(company_stats['avg_percent_change'], threshold=None, arrow=True, percentage=True)
+	content.append(Paragraph(f'Overview For {rtm.capitalize()} Market', title_style))
+	content.append(Paragraph(f'Week begin date: {date}', title_style))
+	content.append(Spacer(1, 20))
 	
-
-	sub_tbl_data = [
-		[a0, b0],
-		[a1, b1],
-		[a2, b2],
-		[a3, b3],
-		[a4, b4],
-		[a5, b5],
-		[a6, b6],
-		[a7, b7],
-		[a8, b8],
-		[a9, b9],
-		[a10, b10]
-		]
-	sub_tbl = Table(
-		sub_tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w
+	line_graph_tbl_data = [
+		[
+			'',
+			line_chart_img,
+			''
 			]
-		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE'),
-		('TEXTCOLOR', (0,0), (-1,0), colors.white),
-		('ROWBACKGROUNDS', (0,0), (-1, 0), [settings.swto_blue]),
-		('ROWBACKGROUNDS', (0,6), (-1, 6), [settings.swto_blue])])
-	sub_tbl.setStyle(style)
-
-	
-	''' build the main table '''
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-	
-	avg_line_path = str(plt_paths['avg_plt_path'])
-	
-	avg_img = Image(str(avg_line_path), width=3.5*inch, height=2.1*inch)
-		
-	col2_head = Paragraph(f'<font><strong>Average Statistics</strong></font>', styles['centeredText'])
-	col3_head = Paragraph(f'<font><strong>Line Graph of Averages</strong></font>', styles['centeredText'])
-	
-	# each row of data gets a list in tbl_data
-	tbl_data = [
-	[
-		'',
-		col2_head,
-		col3_head,
-		''
-		],
-	[
-		'',
-		sub_tbl, # table inside this cell
-		avg_img, # avg line graph
-		''
 		]
-	]
 	
 	table = Table(
-		tbl_data,
+		line_graph_tbl_data,
 		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
+			page_width * 0.1,
+			page_width * 0.8,
+			page_width * 0.1
 			]
 		)
 	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE'),
-		('VALIGN', (2,1), (2,1), 'MIDDLE')
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE')
 		])
 	table.setStyle(style)
 	content.append(table)
-	content.append(spacer)
-	content.append(spacer)
-	content.append(hr)
-	content.append(spacer)
-	content.append(spacer)
-	content.append(stdev_tbl(data_packet))
-	
-	return content
 
-def median_sub_tbl(data_packet):
-	page_width = letter[0]
-	stats = data_packet['stats']
+	content.append(Spacer(1,0.5*inch))
+	
+	# build rtm subtable
+	prev_prediction_full = predict_next_week(rtm_stats[:-1])
+	cur_prediction_full = predict_next_week(rtm_stats)
+	
+	cur_prediction = bld_stat_color(cur_prediction_full[0], threshold=0.4, arrow=False, percentage=True)
 
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-	company_stats = stats['company']
-	date = rtm_stats['date']
-	plt_paths = data_packet['plt_paths']
-	styles = data_packet['styles']
-	doc = data_packet['doc']
+	prev_prediction = bld_stat_color(prev_prediction_full[0], threshold=0.4, arrow=False, percentage=True)
 	
-	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
-	red = settings.red
-	green = settings.green
-	warning_orange = settings.warning_orange
+	avg_trend = bld_avg_trend(cur_prediction_full[1])
 	
-	''' tbl data stuff? '''
-	col1_w = page_width * .3
-	col2_w = page_width * .1
+	prev_trend = bld_stat_color(prev_prediction_full[1], threshold=0, arrow=True, percentage=False)
 	
-	'''Median data'''
-	a0 = Paragraph(f'<font color={colors.white}><strong>Rtm Median Stats</strong></font>')
-	b0 = Paragraph('')
-	a1 = Paragraph(f'Current RTM Median:')
-	b1 = bld_stat_color(rtm_stats['cur_median'], threshold=0.4, arrow=False, percentage=True)
-	a2 = Paragraph(f'Last Week RTM Median')
-	b2 = bld_stat_color(rtm_stats['prev_median'], threshold=0.4, arrow=False, percentage=True)
-	a3 = Paragraph(f'Absolute Value of Change in Median')
-	b3 = bld_stat_color(rtm_stats['median_abs_change'], threshold=None, arrow=True, percentage=True)
-	a4 = Paragraph(f'Percentage Change in Median')
-	b4 = bld_stat_color(rtm_stats['median_percent_change'], threshold=None, arrow=True, percentage=True)
+	cur_wk_avg_rtm = bld_stat_color(cur_week_rtm['average'], threshold=0.4, arrow=False, percentage=True)
 
-	a5 = Paragraph('')
-	b5 = Paragraph('')
-	a6 = Paragraph(f'<font color={colors.white}><strong>Company Median Stats</strong></font>')
-	b6 = Paragraph('')
-	a7 = Paragraph(f'Current Company Median:')
-	b7 = bld_stat_color(company_stats['cur_median'], threshold=0.4, arrow=False, percentage=False)
-	a8 = Paragraph(f'Previous Week Company Median:')
-	b8 = bld_stat_color(company_stats['prev_median'], threshold=0.4, arrow=False, percentage=False)
-	a9 = Paragraph(f'Absolute Value of Change in Company Median:')
-	b9 = bld_stat_color(company_stats['median_abs_change'], threshold=None, arrow=True, percentage=False)
-	a10 = Paragraph(f'Percent Change in Company Median:')
-	b10 = bld_stat_color(rtm_stats['median_percent_change'], threshold=None, arrow=True, percentage=True)
+	prev_wk_avg_rtm = bld_stat_color(prev_week_rtm['average'], threshold=0.4, arrow=False, percentage=True)
 	
-	sub_tbl_data = [
-		[a0, b0],
-		[a1, b1],
-		[a2, b2],
-		[a3, b3],
-		[a4, b4],
-		[a5, b5],
-		[a6, b6],
-		[a7, b7],
-		[a8, b8],
-		[a9, b9],
-		[a10, b10]
-		]
-	sub_tbl = Table(
-		sub_tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w
-			]
-		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE'),
-		('TEXTCOLOR', (0,0), (-1,0), colors.white),
-		('ROWBACKGROUNDS', (0,0), (-1, 0), [settings.swto_blue]),
-		('ROWBACKGROUNDS', (0,6), (-1, 6), [settings.swto_blue])])
-	sub_tbl.setStyle(style)
+	percent_change_avg_rtm = bld_stat_color(cur_week_rtm['avg_percent_change'], threshold=None, arrow=True, percentage=True)
 	
-	return sub_tbl
-
-def iqr_tbl(data_packet):
-	stats = data_packet['stats']
-	page_width = letter[0]
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-	company_stats = stats['company']
-	date = rtm_stats['date']
-	plt_paths = data_packet['plt_paths']
-	styles = data_packet['styles']
-	doc = data_packet['doc']
+	prev_percent_change_avg_rtm = bld_stat_color(prev_week_rtm['avg_percent_change'], threshold=None, arrow=True, percentage=True)
 	
-	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
+	abs_change_rtm = bld_stat_color(cur_week_rtm['avg_abs_change'], threshold=None, arrow=True, percentage=False)
 	
-	''' tbl data stuff? '''
-	col1_w = page_width * .3
-	col2_w = page_width * .1
+	prev_abs_change_rtm = bld_stat_color(prev_week_rtm['avg_abs_change'], threshold=None, arrow=True, percentage=False)
 	
-	'''iqr data'''
-	a1 = Paragraph(f'<font color={colors.white}><strong>IQR:</strong></font>')
-	b1 = Paragraph(f'<font color="{colors.white}"><strong>{rtm_stats["iqr"]}</strong></font>')
-	a2 = Paragraph(f'Q1:')
-	b2 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["q1"]}</strong></font>')
-	a3 = Paragraph(f'Q3:')
-	b3 = Paragraph(f'<font color="{colors.green}"><strong>{rtm_stats["q3"]}</strong></font>')
-	a4 = Paragraph(f'High Range of IQR:')
-	b4 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["high_range_iqr"]}</strong></font>')
-	a5 = Paragraph(f'Number of RTM IQR outliers:')
-	b5 = Paragraph(f'<font color="{colors.red}"><strong>{rtm_stats["num_iqr_outliers"]}</strong></font>')
-	a6 = Paragraph(f'Number of Company IQR outliers:')
-	b6 = Paragraph(f'<font color="{colors.red}"><strong>{company_stats["num_iqr_outliers"]}</strong></font>')
-	stdev_explain = Paragraph(f'Interquartile Range (IQR) measures the spread of the middle 50% of your data. It’s the difference between the first quartile (25th percentile) and the third quartile (75th percentile), showing where the bulk of the data lies.<br/><br/>  •	1 IQR means data is typical and falls within the expected range.<br/>  •	2 IQRs suggests that the data is somewhat unusual.<br/>  •	3+ IQRs means the data point is an outlier, likely indicating something noteworthy, like a major change in behavior or a flaw in the system.<br/><br/>Typically, values beyond 1.5 times the IQR (<font color={colors.red}><strong>{round(rtm_stats["iqr"] * 1.5, 2)}</strong></font> in this case) are generally considered extreme outliers, so you might want to keep an eye on those.', styles['Code'])
-	
-	sub_tbl_data = [
-		[a1, b1],
-		[a2, b2],
-		[a3, b3],
-		[a4, b4],
-		[a5, b5],
-		[a6, b6]
-		]
-	
-	sub_tbl = Table(
-		sub_tbl_data,
-		colWidths = [col1_w, col2_w]
-		)
-		
-	style = TableStyle([
-		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-		('ROWBACKGROUNDS', (0,0), (1,0), [settings.swto_blue]),
-		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.lightgrey])])
-	sub_tbl.setStyle(style)
-
-	''' build the main table '''
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-		
-	col2_head = Paragraph(f'<strong>InterQuartile Range Primer</strong>', styles['centeredText'])
-	col3_head = Paragraph(f'<strong>Standard Deviation Stats</strong>', styles['centeredText'])
-	
-	# each row of data gets a list in tbl_data
-	tbl_data = [
-	[
-		'',
-		col2_head,
-		col3_head,
-		''
+	# buld cur week subtable
+	cur_sub_tbl_data = [
+		[
+			'Average percent_speeding', 
+			cur_wk_avg_rtm
 		],
-	[
-		'',
-		stdev_explain,
-		sub_tbl,
-		''
+		[
+			'Percent Change In Average',
+			percent_change_avg_rtm
+			],
+		[
+			'Absolute Change In Average',
+			abs_change_rtm
+		],
+		[
+			'Predicted Average Next Week',
+			cur_prediction
+		],
+		[
+			'Average Trend Direction',
+			avg_trend
 		]
 	]
-	
-	table = Table(
-		tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
-			]
+	cur_sub_tbl = Table(
+		cur_sub_tbl_data
 		)
-	style = TableStyle([
-		('VALIGN', (0,0), (2,1), 'MIDDLE')
-		])
-	table.setStyle(style)
-	
-	return table
-
-def create_median_frame(data_packet):
-	content = []
-	spacer = Spacer(1, 0.2*inch)
-	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
-	page_width = letter[0]
-	stats = data_packet['stats']
-
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	start_date = rtm_stats['date']
-	company_stats = stats['company']
-	date = rtm_stats['date']
-	plt_paths = data_packet['plt_paths']
-	styles = data_packet['styles']
-	doc = data_packet['doc']
-	
-	centered_style = ParagraphStyle(name='CenteredText', parent=styles['BodyText'], alignment=1)
-	red = settings.red
-	green = settings.green
-	warning_orange = settings.warning_orange
-	
-	'''Page title part'''
-	page_title = Paragraph('Median Analitics', title_style)
-	content.append(page_title)
-	content.append(spacer)
-	
-	''' build the main table '''
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-	median_line_path = str(plt_paths['median_plt_path'])
-	median_img = Image(str(median_line_path), width=3.5*inch, height=2.1*inch)
 		
-	col2_head = Paragraph(f'<strong>Median Statistics</strong>', styles['centeredText'])
-	col3_head = Paragraph(f'<strong>Line Graph of Median Data</strong>', styles['centeredText'])
-	
-	sub_tbl = median_sub_tbl(data_packet)
-	
-	# each row of data gets a list in tbl_data
-	tbl_data = [
-	[
-		'',
-		col2_head,
-		col3_head,
-		''
+	# build prev week subtable
+	prev_sub_tbl_data = [
+		[
+			'Average percent_speeding', 
+			prev_wk_avg_rtm
 		],
-	[
-		'',
-		sub_tbl, # table inside this cell
-		median_img, # avg line graph
-		''
+		[
+			'Percent Change In Average',
+			prev_percent_change_avg_rtm
+			],
+		[
+			'Absolute Change In Average',
+			prev_abs_change_rtm
+		],
+		[
+			'Predicted Average Next Week',
+			prev_prediction
+		],
+		[
+			'Trend Value',
+			prev_trend
 		]
 	]
+	prev_sub_tbl = Table(
+		prev_sub_tbl_data
+		)
 	
-	table = Table(
-		tbl_data,
+	# build analysis table
+	cur_header = Paragraph(f'<font color="white"><strong>Current RTM Market Stats</strong></font>', styles['centeredText'])
+	
+	prev_header = Paragraph(f'<font color="white"><strong>Last Week Stats</strong></font>', styles['centeredText'])
+	analysis_tbl_data = [
+		[
+			'',
+			cur_header,
+			'',
+			prev_header,
+			''
+		],
+		['',
+		cur_sub_tbl,
+		'',
+		prev_sub_tbl,
+		'']
+		]
+	analysis_tbl = Table(
+		analysis_tbl_data,
 		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
+			page_width * 0.1,
+			page_width * 0.39,
+			page_width * 0.02,
+			page_width * 0.39,
+			page_width * 0.1
 			]
 		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE')
-		])
-	table.setStyle(style)
-	content.append(table)
-	content.append(spacer)
-	content.append(spacer)
-	content.append(hr)
-	content.append(spacer)
-
-
-	content.append(iqr_tbl(data_packet))
 	
-	
-	return content
-
-def create_outlier_frame(data_packet):
-	content = []
-	centered_style = ParagraphStyle(
-		name="CenteredStyle",
-		alignment=TA_CENTER
-		)
-	spacer = Spacer(1, 0.2*inch)
-	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
-	page_width = letter[0]
-	styles = data_packet['styles']
-	doc = data_packet['doc']
-	stats = data_packet['stats']
-	
-	rtm_stats = stats['rtm']
-	rtm_outlier_list = rtm_stats['outlier_dict_list']['rtm']
-	
-	company_stats = stats['company']
-	company_outlier_list = company_stats['outlier_dict_list']['company']
-	
-	#test_dict = rtm_outlier_list[0]
-	#for i in test_dict:
-		#print(f'{i}: {test_dict[i]}')
-		
-	section_title = Paragraph('Outliers', title_style)
-	
-	content.append(section_title)
-	
-	# build the table
-	''' build the main table '''
-	# build column names
-	column_names = [
-		'Driver Id',
-		'Percent Speeding',
-		'Standard Deviation',
-		'IQR Outlier',
-		'IQR Differential'
+	analysis_tbl.setStyle(
+		[
+			('ALIGN', (0,0), (-1,0), 'CENTER'),
+			('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+			('BACKGROUND', (1,0), (1,0), settings.swto_blue),
+			('BACKGROUND', (3,0), (3,0), settings.swto_blue)
 		]
-	column_keys = [
-		'driver_id',
-		'percent_speeding',
-		'driver_stdev',
-		'high_iqr_status',
-		'iqr_differential'
-		]
+	)
 	
-	# build data for rtm table
-	rtm_table_data = [column_names]
-	
-	for dict in rtm_outlier_list:
-		driver_id_data = Paragraph(f'<font color={colors.black}><strong>{dict["driver_id"]}</strong></font>', centered_style)
-		
-		percent_speeding_data = Paragraph(f'<font color={colors.black}><strong>{dict["percent_speeding"]}</strong></font>', centered_style)
-		
-		stdev_color = colors.green if dict['stdev'] < 4 else colors.red
-		driver_stdev_data = Paragraph(f'<font color={stdev_color}><strong>{dict["driver_stdev"]}</strong></font>', centered_style)
-		
-		iqr_outlier_color = colors.green if dict['high_iqr_status'] is False else colors.red
-		iqr_outlier_data = Paragraph(f'<font color={iqr_outlier_color}><strong>{dict["high_iqr_status"]}</strong></font>', centered_style)
-		
-		iqr_differential_color = colors.green if dict['iqr_differential'] < 0 else colors.red
-		iqr_differential_data = Paragraph(f'<font color={iqr_differential_color}><strong>{dict["iqr_differential"]}</strong></font>', centered_style)
-		
-		new_row = [
-			driver_id_data,
-			percent_speeding_data,
-			driver_stdev_data,
-			iqr_outlier_data,
-			iqr_differential_data
-			]
-		
-		rtm_table_data.append(new_row)
+	cur_sub_tbl.setStyle([
+		('ROWBACKGROUNDS', (0,0), (-1,-1), ['#ffffff', '#d3d3d3'])
+	])
 
-	# build data for company table
-	company_table_data = [column_names]
+	prev_sub_tbl.setStyle([
+		('ROWBACKGROUNDS', (0,0), (-1,-1), ['#ffffff', '#d3d3d3'])
+	])
 	
-	for dict in company_outlier_list:
-		driver_id_data = Paragraph(f'<font color={colors.black}><strong>{dict["driver_id"]}</strong></font>', centered_style)
-		
-		percent_speeding_data = Paragraph(f'<font color={colors.black}><strong>{dict["percent_speeding"]}</strong></font>', centered_style)
-		
-		stdev_color = colors.green if dict['stdev'] < 4 else colors.red
-		driver_stdev_data = Paragraph(f'<font color={stdev_color}><strong>{dict["driver_stdev"]}</strong></font>', centered_style)
-		
-		iqr_outlier_color = colors.green if dict['high_iqr_status'] is False else colors.red
-		iqr_outlier_data = Paragraph(f'<font color={iqr_outlier_color}><strong>{dict["high_iqr_status"]}</strong></font>', centered_style)
-		
-		iqr_differential_color = colors.green if dict['iqr_differential'] < 0 else colors.red
-		iqr_differential_data = Paragraph(f'<font color={iqr_differential_color}><strong>{dict["iqr_differential"]}</strong></font>', centered_style)
-		
-		new_row = [
-			driver_id_data,
-			percent_speeding_data,
-			driver_stdev_data,
-			iqr_outlier_data,
-			iqr_differential_data
-			]
-		
-		company_table_data.append(new_row)
-	
-	# build the tables
-	rtm_table = Table(rtm_table_data)
-	company_table = Table(company_table_data)
-	
-	style = TableStyle([
-		('ALIGN', (0,0), (-1,-1), 'CENTER'),
-		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-		('TEXTCOLOR', (0,0), (-1,0), colors.white),
-		('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.lightgrey]),
-		('ROWBACKGROUNDS', (0,0), (-1, 0), [settings.swto_blue]),
-		])
-		
-	rtm_table.setStyle(style)
-	company_table.setStyle(style)
-	
-	'''
-	info for later formatting
-	
-	frame_height = doc.height
-	table_height = my_table.wrap(doc.width, doc.height)[1]  # Get table height
-
-	if table_height > (frame_height - 100):  # Adjust 100 to your graphic's height
-    content.append(PageBreak())  # Move table to the next page
-
-	content.append(my_table)
-	'''
-	
-	rtm_header = Paragraph('Statistical Outliers: <strong>RTM</strong> Edition', centered_style)
-	company_header = Paragraph('Statistical Outliers: <strong>Company</strong> Edition', centered_style)
-	content.append(spacer)
-	content.append(rtm_header)
-	content.append(spacer)
-	content.append(rtm_table)
-	content.append(spacer)
-	content.append(spacer)
-	content.append(company_header)
-	content.append(spacer)
-	content.append(company_table)
+	content.append(analysis_tbl)
 	
 	return content
-	
-def create_final_frame(data_packet):
-	styles = data_packet['styles']
-	content = []
-	centered_style = ParagraphStyle(
-		name="CenteredStyle",
-		alignment=TA_CENTER
-		)
-	spacer = Spacer(1, 0.2*inch)
-	hr = HRFlowable(width='50%', thickness=5, color=settings.swto_blue)
-	page_width = letter[0]
-	
-	section_title = Paragraph('Analytic Methodologies', title_style)
-	sub_title1 = Paragraph('And', title_style)
-	sub_title2 = Paragraph('General Intel',title_style)
-	
-	content.append(section_title)
-	content.append(sub_title1)
-	content.append(sub_title2)
-	content.append(spacer)
-	
-	filter_explanation = Paragraph(f'<font color={settings.swto_blue} size=10><strong>Filtering Methodology: </strong></font>Averages and Median values sometimes have really odd entries. There was one that was like 600% speeding. It doesnt make sense, and these huge values tend to skew the final analysis.<br/><br/>So anyway, when going though all this info the program runs a raw average and standard deviation check, then filters out the rediculous outliers. Anything over 4 standard deviations gets removed from the sample, and then the new average and standard deviation more accuratly reflects whats going on with the data.', styles['Code'])
-	
-	missing_data_explanation = Paragraph(f"<font color={settings.swto_blue} size=10><strong>Handling Missing Data: </strong></font>Sometimes the speedGauge spreadsheet doesn't include all the drivers. The worst example of this is when we get those spreadsheets with only like 50 people. It jacks up the trends.<br/><br/>So what we do is use a combination of extrapolation and interpolation to try and fill in missing values. It's not elegant, but its better than nothing and the data is close enough that it doesn't mess up the overall trend.", styles['Code'])
-	
-	content.append(filter_explanation)
-	content.append(spacer)
-	content.append(missing_data_explanation)
-	content.append(spacer)
-	
-	signature = Paragraph(f'<font color={settings.swto_blue} size=10><strong>-The Bulk Fuel Ranger</strong></font>', right_aligned_style)
-	content.append(signature)
-	
-	
-	
-	return content
+
+
+
+
 
 def create_report(stats, plt_paths):
 	rtm_stats = stats['rtm']
-	output_path = build_output_path(rtm_stats['date'])
+	date = db_utils.get_max_date()
+	output_path = build_output_path(date)
 	
 	frame = Frame(0.5 * inch, 0.5 * inch, 7.5 * inch, 10 * inch, id='main_frame')
 	
@@ -862,33 +365,25 @@ def create_report(stats, plt_paths):
 	content = []
 	content.extend(create_overview_frame(data_packet))
 	content.append(PageBreak())	
-	content.extend(create_avg_frame(data_packet))
-	content.append(PageBreak())
-	content.extend(create_median_frame(data_packet))
 	
-	content.append(PageBreak())
-	content.extend(create_outlier_frame(data_packet))
-	content.append(PageBreak())
-	
-	content.extend(create_final_frame(data_packet))
 
 	doc.build(content, onLaterPages=add_logo)
 	
 if __name__ == '__main__':
 	import json
+	date_list = db_utils.get_all_dates()
 	conn = settings.db_connection()
 	c = conn.cursor()
-	sql = f'SELECT start_date, rtm, stats, plt_paths FROM {settings.analysisStorage} ORDER BY start_date'
-	c.execute(sql)
+	sql = f'SELECT start_date, rtm, stats, plt_paths FROM {settings.analysisStorage} WHERE start_date = ?'
+	value = (date_list[-1],)
+	c.execute(sql, value)
 	result = c.fetchone()
+
 	stats = json.loads(result[2])
 	rtm_stats = stats['rtm']
+	company_stats = stats['company']
 	
 	plt_paths = json.loads(result[3])
-	
-	# temporary adjustment to fix my mistake from visualizatikns. mistake is saved in the db, so we fix it here
-	#median_plt_path = plt_paths['median_plt_pth']
-	#plt_paths['median_plt_path'] = median_plt_path
 	conn.close()
 
 	
