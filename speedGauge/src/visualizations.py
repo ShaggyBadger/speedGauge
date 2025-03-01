@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import settings
 import matplotlib.pyplot as plt
 from matplotlib import style
-style.use('Solarize_Light2')
+style.use('seaborn-darkgrid')
 import matplotlib.dates as mdates
 from datetime import datetime
 from pathlib import Path
@@ -173,9 +173,12 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 				company_line_data.append(dict[stat_selection])
 		
 	plt.figure(constrained_layout=True)
+	#plt.figure(figsize=(6,2))
+	plt.tight_layout()
+
 	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
 	
-	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
+	#plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
 	
 	if stat_selection == 'average':
 		plt.axhline(y=0.4, color='red', linewidth=1, label='percent_speeding Objective: 0.4%')
@@ -186,12 +189,15 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	# Format the date labels to show the month and year (e.g., Jan 2024)
 	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
 	
+	
 	# Rotate the labels for readability
 	plt.xticks(rotation=45)
 	
 	ax = plt.gca()
 	ax.yaxis.set_label_position("right")
 	ax.yaxis.tick_right()
+	#ax.set_title(title, fontsize=8)
+	#ax.legend(["Line 1"], fontsize=8, loc="upper left", bbox_to_anchor=(1, 1))
 	
 	# Automatically adjust layout to avoid clipping
 	#plt.tight_layout()
@@ -201,6 +207,8 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	plt.ylabel(y_label)
 	plt.title(title)
 	plt.legend()
+	#plt.figure(figsize=(6,4))
+	#plt.tight_layout()
 	
 	plt_type = f'LineChart_{stat_selection.capitalize()}'
 	plt_path = save_plt(plt, dates[-1], plt_type)
@@ -216,6 +224,7 @@ def build_percent_change_line_chart(stats, rtm='chris'):
 	
 	rtm_stats = stats['rtm']
 	company_stats = stats['company']
+	#style.use('dark_background')
 	
 	dates = db_utils.get_all_dates()
 	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
@@ -307,9 +316,9 @@ def all_chart_styles(stats):
 			style.use(s)
 			print(s)
 			build_line_chart(stats, 'average', rtm='chris')
-			build_histogram(stats, 'company')
-			build_histogram(stats, 'chris')
-			build_scatter(stats)
+			#build_histogram(stats, 'company')
+			#build_histogram(stats, 'chris')
+			#build_scatter(stats)
 			print('****************\n')
 	
 if __name__ == '__main__':
@@ -323,7 +332,6 @@ if __name__ == '__main__':
 	#build_scatter(stats)
 	build_line_chart(stats, 'average', rtm='chris')
 	#build_percent_change_line_chart(stats)
-	
 	#all_chart_styles(stats)
 
 	pass

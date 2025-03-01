@@ -55,9 +55,11 @@ def build_analysis(rtm='chris'):
 		
 		if len(rtm_data) == 0:
 			rtm_avg_percent_change = get_percent_change(rtm_avg, 0)
+			rtm_avg_abs_change = rtm_avg - 0
 		else:
-			prev_avg = rtm_data[-1]['average']
-			rtm_avg_percent_change = get_percent_change(rtm_avg, prev_avg)
+			prev_rtm_avg = rtm_data[-1]['average']
+			rtm_avg_percent_change = get_percent_change(rtm_avg, prev_rtm_avg)
+			rtm_avg_abs_change = rtm_avg - prev_rtm_avg
 		
 		company_spd_lst = filter_speed_list([dict['percent_speeding'] for dict in company_drivers])
 		company_avg = round(statistics.mean(company_spd_lst), 2)
@@ -65,9 +67,11 @@ def build_analysis(rtm='chris'):
 		
 		if len(company_data) == 0:
 			company_avg_percent_change = get_percent_change(rtm_avg, 0)
+			company_avg_abs_change = company_avg - 0
 		else:
-			prev_avg = company_data[-1]['average']
-			company_avg_percent_change = get_percent_change(company_avg, prev_avg)
+			prev_company_avg = company_data[-1]['average']
+			company_avg_percent_change = get_percent_change(company_avg, prev_company_avg)
+			company_avg_abs_change = company_avg - prev_company_avg
 		
 		rtm_data.append(
 			{
@@ -76,7 +80,8 @@ def build_analysis(rtm='chris'):
 				'spd_lst': rtm_spd_lst,
 				'average': rtm_avg,
 				'median': rtm_median,
-				'avg_percent_change': round(rtm_avg_percent_change,2)
+				'avg_percent_change': round(rtm_avg_percent_change,2),
+				'avg_abs_change': round(rtm_avg_abs_change, 2)
 			}
 		)
 		
@@ -86,7 +91,8 @@ def build_analysis(rtm='chris'):
 				'spd_lst': company_spd_lst,
 				'average': company_avg,
 				'median': company_median,
-				'avg_percent_change': round(company_avg_percent_change, 2)
+				'avg_percent_change': round(company_avg_percent_change, 2),
+				'avg_abs_change': round(company_avg_abs_change, 2)
 			}
 		)
 	

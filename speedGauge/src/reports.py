@@ -12,10 +12,11 @@ from reportlab.lib.units import inch
 from pathlib import Path
 import sys, os
 from datetime import datetime
-from src import db_utils
+
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from src import db_utils
 
 # Now you can import settings
 import settings
@@ -41,6 +42,11 @@ title_style = ParagraphStyle(
 right_aligned_style = ParagraphStyle(
 	name="RightAligned",
 	alignment=TA_RIGHT
+)
+
+CenteredAligned = ParagraphStyle(
+	name='CenteredAligned',
+	alignment=TA_CENTER
 )
 
 
@@ -70,72 +76,6 @@ def build_output_path(date, rtm='chris'):
 	file_path = report_dir / file_name
 	
 	return file_path
-
-def create_overview_frame(stats, plt_paths):
-	page_width = letter[0]
-
-	rtm_stats = stats['rtm']
-	rtm = stats['rtm_name']
-	company_stats = stats['company']
-	
-	rtm_histogram_path = str(plt_paths['rtm_histo_path'])
-	company_histogram_path = str(plt_paths['company_histo_path'])
-	
-	content = []
-	
-	content.append(Paragraph(f'Overview for {rtm}', title_style))
-	content.append(Paragraph(f'Week begin date: {start_date}', title_style))
-	content.append(Spacer(1, 20))
-	
-	content.append(Paragraph(f'Number of drivers for RTM {stats["rtm_name"].capitalize()} in this analysis: {rtm_stats["sample_size"]}\n', styles['BodyText']))
-	content.append(Paragraph(f'Number of drivers for the whole company in this analysis: {company_stats["sample_size"]}'))
-	
-	content.append(Spacer(1,10))
-	content.append(HRFlowable(width="75%", thickness=1, color="black", spaceBefore=10, spaceAfter=10))
-	
-	rtm_img = Image(str(rtm_histogram_path), width=3.5*inch, height=2.1*inch)
-
-	company_img = Image(company_histogram_path, width=3.5*inch, height=2.1*inch)
-	
-	rtm_hist_head = Paragraph(f'RTM Histogram Of Speeding Percents', styles['centeredText'])
-	comp_hist_head = Paragraph(f'Company-Wide Histogram Of Speeding Percents', styles['centeredText'])
-	
-	tbl_data = [
-		[
-			'',
-			rtm_hist_head,
-			comp_hist_head,
-			''
-			],
-		[
-			'',
-			rtm_img,
-			company_img,
-			''
-			]
-		]
-	col1_w = page_width * .05
-	col2_w = page_width * .45
-	col3_w = page_width * .45
-	col4_w = page_width * .05
-	table = Table(
-		tbl_data,
-		colWidths = [
-			col1_w,
-			col2_w,
-			col3_w,
-			col4_w
-			]
-		)
-	style = TableStyle([
-		('VALIGN', (0,0), (1,1), 'MIDDLE')
-		])
-	table.setStyle(style)
-	content.append(table)
-
-	content.append(Spacer(1,0.5*inch))
-	
-	return content
 
 def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 	"""
@@ -169,6 +109,161 @@ def bld_stat_color(value, threshold=None, arrow=False, percentage=True):
 	
 	# Create styled paragraph
 	return Paragraph(f'<font color="{color}"><strong>{formatted_value}</strong></font>', styles['BodyText'])
+
+def create_overview_frame(data_packet):
+	stats = data_packet['stats']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	date = db_utils.get_max_date()
+	doc = data_packet['doc']
+	
+	page_width = letter[0]
+
+	rtm_stats = stats['rtm']
+	cur_week_rtm = rtm_stats[-1]
+	rtm = stats['rtm_name']
+	company_stats = stats['company']
+	cur_week_company = company_stats[-1]
+	
+	avg_plt_path = str(plt_paths['avg_plt_path'])
+	
+	content = []
+	
+	line_chart_img = Image(avg_plt_path)
+	
+	# scale the image
+	img_w = line_chart_img.drawWidth
+	img_h = line_chart_img.drawHeight
+	ratio = img_w / img_h
+	
+	new_w = page_width * 0.8
+	new_h = new_w / ratio
+	
+	line_chart_img.drawWidth = new_w
+	line_chart_img.drawHeight = new_h
+	
+	content.append(Paragraph(f'Overview For {rtm.capitalize()} Market', title_style))
+	content.append(Paragraph(f'Week begin date: {date}', title_style))
+	content.append(Spacer(1, 20))
+	
+	line_graph_tbl_data = [
+		[
+			'',
+			line_chart_img,
+			''
+			]
+		]
+	
+	table = Table(
+		line_graph_tbl_data,
+		colWidths = [
+			page_width * 0.1,
+			page_width * 0.8,
+			page_width * 0.1
+			]
+		)
+	style = TableStyle([
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+		])
+	table.setStyle(style)
+	content.append(table)
+
+	content.append(Spacer(1,0.5*inch))
+	
+	# build rtm subtable
+	cur_wk_avg_rtm = bld_stat_color(cur_week_rtm['average'], threshold=0.4, arrow=False, percentage=True)
+	
+	cur_wk_avg_company = bld_stat_color(cur_week_company['average'], threshold=0.4, arrow=False, percentage=True)
+	
+	percent_change_avg_rtm = bld_stat_color(cur_week_rtm['avg_percent_change'], threshold=None, arrow=True, percentage=True)
+	
+	percent_change_avg_company = bld_stat_color(cur_week_company['avg_percent_change'], threshold=None, arrow=True, percentage=True)
+	
+	abs_change_rtm = bld_stat_color(cur_week_rtm['avg_abs_change'], threshold=None, arrow=True, percentage=False)
+	
+	abs_change_company = bld_stat_color(cur_week_company['avg_abs_change'], threshold=None, arrow=True, percentage=False)
+	
+	
+	rtm_sub_tbl_data = [
+		[
+			'Average percent_speeding', 
+			cur_wk_avg_rtm
+		],
+		[
+			'Percent Change In Average',
+			percent_change_avg_rtm
+			],
+		[
+			'Absolute Change In Average',
+			abs_change_rtm
+		]
+	]
+	rtm_sub_tbl = Table(
+		rtm_sub_tbl_data
+		)
+		
+	# build company subtable
+	company_sub_tbl_data = [
+		[
+			'Average percent_speeding',
+			cur_week_company['average']
+		],
+		[
+			'Percent Change in Average',
+			cur_week_company['avg_percent_change']
+		]
+	]
+	company_sub_tbl = Table(
+		company_sub_tbl_data
+		)
+	
+	# build analysis table
+	rtm_header = Paragraph(f'<font color="white"><strong>RTM Market Stats</strong></font>', styles['centeredText'])
+	
+	company_header = Paragraph(f'<font color="white"><strong>Company Stats</strong></font>', styles['centeredText'])
+	analysis_tbl_data = [
+		[
+			'',
+			rtm_header,
+			'',
+			company_header,
+			''
+		],
+		['',
+		rtm_sub_tbl,
+		'',
+		company_sub_tbl,
+		'']
+		]
+	analysis_tbl = Table(
+		analysis_tbl_data,
+		colWidths = [
+			page_width * 0.1,
+			page_width * 0.35,
+			page_width * 0.05,
+			page_width * 0.35,
+			page_width * 0.1
+			]
+		)
+	
+	analysis_tbl.setStyle(
+		[
+			('ALIGN', (0,0), (-1,0), 'CENTER'),
+			('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+			('BACKGROUND', (1,0), (1,0), settings.swto_blue),
+			('BACKGROUND', (3,0), (3,0), settings.swto_blue)
+		]
+	)
+	
+	rtm_sub_tbl.setStyle([
+		('ROWBACKGROUNDS', (0,0), (-1,-1), ['#ffffff', '#d3d3d3'])
+	])
+	
+	content.append(analysis_tbl)
+	
+	return content
+
+
 
 def stdev_tbl(data_packet):
 	stats = data_packet['stats']
@@ -264,7 +359,8 @@ def stdev_tbl(data_packet):
 
 def create_report(stats, plt_paths):
 	rtm_stats = stats['rtm']
-	output_path = build_output_path(rtm_stats['date'])
+	date = db_utils.get_max_date()
+	output_path = build_output_path(date)
 	
 	frame = Frame(0.5 * inch, 0.5 * inch, 7.5 * inch, 10 * inch, id='main_frame')
 	
@@ -289,15 +385,7 @@ def create_report(stats, plt_paths):
 	content = []
 	content.extend(create_overview_frame(data_packet))
 	content.append(PageBreak())	
-	content.extend(create_avg_frame(data_packet))
-	content.append(PageBreak())
-	content.extend(create_median_frame(data_packet))
 	
-	content.append(PageBreak())
-	content.extend(create_outlier_frame(data_packet))
-	content.append(PageBreak())
-	
-	content.extend(create_final_frame(data_packet))
 
 	doc.build(content, onLaterPages=add_logo)
 	
