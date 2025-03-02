@@ -289,7 +289,21 @@ def print_driver_info(driver_id):
 	result = c.fetchone()
 	for i in result:
 		print(i)
+	
+def idr_driver_data(driver_id=30150643):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	# get column names
+	sql = f'PRAGMA table_info({settings.speedGaugeData})'
+	c.execute(sql)
+	results = c.fetchall()
+	for i in results:
+		print(i)
+	
+	conn.close()
 
 if __name__ == '__main__':
 	#build_analysisStorage_tbl()
 	pass
+	idr_driver_data()

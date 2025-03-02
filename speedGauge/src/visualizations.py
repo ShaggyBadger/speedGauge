@@ -178,7 +178,7 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 
 	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
 	
-	#plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
+	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
 	
 	if stat_selection == 'average':
 		plt.axhline(y=0.4, color='red', linewidth=1, label='percent_speeding Objective: 0.4%')
@@ -251,7 +251,7 @@ def build_percent_change_line_chart(stats, rtm='chris'):
 	plt.figure(constrained_layout=True)
 	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
 	
-	#plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
+	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
 	
 	# Set major locator to one tick per month
 	plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
@@ -325,7 +325,7 @@ if __name__ == '__main__':
 	from src import analysis
 	stats = analysis.build_analysis()
 
-	print(style.available)
+	#print(style.available)
 	#style.use('seaborn-poster')
 	#build_histogram(stats, 'chris')
 	#build_histogram(stats, 'company')
