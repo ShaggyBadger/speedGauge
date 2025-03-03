@@ -114,5 +114,6 @@ if 'analysis' in sys.modules:
 
 if __name__ == '__main__':
 	
-	a = build_analysis()
+	#a = build_analysis()
+	pass
 

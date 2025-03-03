@@ -7,7 +7,7 @@ from src import db_utils
 from src import processing
 from src import reports
 from src import individualDriver
-from src import idrReport
+from idr_src import idr_analysis
 import matplotlib.pyplot as plt
 import console
 import json
@@ -38,38 +38,45 @@ def idr(enter_driver=True, driver_id=30150643):
 	to be overriden as well with the
 	target id
 	'''
+	# get driver_id from user
+	ids = {
+		1201619: 'rodrick',
+		30199025: 'perkins',
+		30072074: 'jesse',
+		5055241: 'brent',
+		30188814: 'jamie',
+		1110492: 'danny',
+		30069398: 'ron',
+		1152694: 'charles',
+		30202984: 'john r'
+	}
+	
 	if enter_driver is True:
-		data_package = individualDriver.main(enter_driver=True, print_out=True)
-	
-		idrReport.generate_report(data_package['stats'])
-	
-	else:
-		data_package = individualDriver.main(enter_driver=False, driver_num=driver_id, print_out=True)
+		valid_input = False
 		
-		idrReport.generate_report(data_package['stats'])
+		while valid_input is False:
+			console.clear()
+			for i in ids:
+				print(f'{i}: {ids[i]}')
+			print('********\n')
 
-def driver_analysis(manager='chris'):
-	driver_id = input('Please enter driver id: ')
+			selection = input('Enter Driver Number: ')
+			
+			if db_utils.verify_driver_id(selection) is True:
+				valid_input = True
+				driver_id = int(selection)
+			else:
+				console.clear()
+				input(f'{selection} is not a valid input in the database. please enter another number...')
 	
+	# collect all driver dictionaries
+	driver_dicts = db_utils.idr_driver_data(driver_id)
 	
-	
-	# build up this week's data'
-	current_date = db_utils2.get_max_date()
-	date_list = db_utils2.get_all_dates()
-	previous_date = date_list[-2]
-	
-	# gather id numbers to analyze
-	rtm_id_set = db_utils2.gather_driver_ids(rtm=manager)
-	company_id_set = db_utils2.gather_driver_ids(rtm='none')
-	
-	rtm_driver_data = db_utils2.gather_driver_data(rtm_id_set, current_date)
-	rtm_driver_data2 = db_utils2.gather_driver_data(rtm_id_set, previous_date)
-	company_driver_data = db_utils2.gather_driver_data(company_id_set, current_date)
-	company_driver_data2 = db_utils2.gather_driver_data(company_id_set, previous_date)
-	
-	# median and mean historical data
-	rtm_historical_data = db_utils2.gather_historical_driver_data(rtm_id_set)
-	company_historical_data = db_utils2.gather_historical_driver_data(company_id_set)
+	# build stats dict
+	stats = idr_analysis.idr_analytics(driver_dicts, driver_id)
+		
+
+
 
 def weekly_analysis():
 	stat_packet = analysis.build_analysis()
@@ -92,6 +99,7 @@ def run_program():
 	importlib.reload(visualizations)
 	importlib.reload(reports)
 	importlib.reload(db_utils)
+	importlib.reload(idr_analysis)
 	
 	selection_dict = {
 		'1': 'process spreadsheets',
@@ -118,18 +126,3 @@ if __name__ == '__main__':
 	run_program()
 	#run_weekly_analyis()
 	#weekly_analysis()
-
-
-ids = {
-	1201619: 'rodrick',
-	30199025: 'perkins',
-	30072074: 'jesse',
-	5055241: 'brent',
-	30188814: 'jamie',
-	1110492: 'danny',
-	30069398: 'ron',
-	1152694: 'charles',
-	30202984: 'john r'
-	
-	}
-
