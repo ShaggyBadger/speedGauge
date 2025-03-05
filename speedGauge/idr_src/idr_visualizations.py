@@ -73,8 +73,9 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	
 	rtm_stats = stats['rtm']
 	company_stats = stats['company']
+	driver_stats = stats['driver']
 	
-	dates = db_utils.get_all_dates()
+	dates = driver_stats['date_list']
 	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
 	
 	x_label = 'Date'
@@ -85,6 +86,7 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	
 	company_line_data = []
 	rtm_line_data = []
+	driver_line_data = driver_stats['speed_list']
 	
 	for date in dates:	
 		target_dict = None
@@ -100,9 +102,11 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	#plt.figure(figsize=(6,2))
 	plt.tight_layout()
 
-	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
+	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='--', linewidth=1)
 	
-	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
+	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='--', linewidth=1)
+	
+	plt.plot(dates2, driver_line_data, label='Driver Speeds', color='black', linestyle='-', linewidth=3)
 	
 	if stat_selection == 'average':
 		plt.axhline(y=0.4, color='red', linewidth=1, label='percent_speeding Objective: 0.4%')
@@ -135,35 +139,29 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	#plt.tight_layout()
 	
 	plt_type = f'LineChart_{stat_selection.capitalize()}'
-	plt_path = save_plt(plt, dates[-1], plt_type)
+	#plt_path = save_plt(plt, dates[-1], plt_type)
 	
 	plt.show()
 	plt.close()
 	plt.clf()
 	
-	return plt_path
+	#return plt_path
 
-def controller(stats, rtm='chris'):
+def controller(stats, driver_id, rtm='chris'):
 	rtm_stats = stats['rtm']
 	company_stats = stats['company']
+	driver_stats = stats['driver']
 	
 	'''build histograms'''
 	# build rtm histogram
-	rtm_histo_path = build_histogram(stats, rtm, log_setting=False)
-	company_histo_path = build_histogram(stats, 'company', log_setting=False)
+	#rtm_histo_path = build_histogram(stats, rtm, log_setting=False)
+	#company_histo_path = build_histogram(stats, 'company', log_setting=False)
 	
 	'''build scatter plt'''
 	#rtm_scatter = build_scatter(rtm_stats)
 	
 	'''build line charts'''
 	avg_plt_path = build_line_chart(stats, 'average', rtm='chris')
-	median_plt_path = build_line_chart(stats, 'median', rtm='chris')
+	#median_plt_path = build_line_chart(stats, 'median', rtm='chris')
 	
-	plt_paths = {
-		'rtm_histo_path': rtm_histo_path,
-		'company_histo_path': company_histo_path,
-		'avg_plt_path': avg_plt_path,
-		'median_plt_path': median_plt_path
-	}
-	
-	return plt_paths
+

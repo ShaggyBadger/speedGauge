@@ -1,6 +1,7 @@
 import settings
 import os
 import importlib
+import db_management
 from src import analysis
 from src import visualizations
 from src import db_utils
@@ -8,6 +9,8 @@ from src import processing
 from src import reports
 from src import individualDriver
 from idr_src import idr_analysis
+from idr_src import idr_visualizations
+from idr_src import idr_reports
 import matplotlib.pyplot as plt
 import console
 import json
@@ -22,7 +25,7 @@ def inspection():
 		print(docstring)
 		print('\n******\n')
 
-def idr(enter_driver=True, driver_id=30150643):
+def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 	'''
 	this can work from makn seledtion
 	screen, in which case enter driver 
@@ -69,11 +72,28 @@ def idr(enter_driver=True, driver_id=30150643):
 				console.clear()
 				input(f'{selection} is not a valid input in the database. please enter another number...')
 	
+	# build company and rtm stats
+	if stats_package == None:
+		stats_package = analysis.build_analysis()
+	
 	# collect all driver dictionaries
 	driver_dicts = db_utils.idr_driver_data(driver_id)
 	
-	# build stats dict
-	stats = idr_analysis.idr_analytics(driver_dicts, driver_id)
+	# build driver stats dict
+	driver_stats = idr_analysis.idr_analytics(driver_dicts, driver_id, stats_package)
+	
+	# complete stats package
+	stats_package['driver'] = driver_stats
+	
+	# build visualizations
+	plt_paths = idr_visualizations.controller(stats_package, driver_id)
+	
+	# build report
+	report_path = idr_reports.create_report(stat_package, plt_paths)
+	
+
+	
+	
 		
 
 
@@ -104,7 +124,8 @@ def run_program():
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
-		'3': 'Run individual driver report'
+		'3': 'Run individual driver report',
+		'4': 'Purge generated speeds from db'
 	}
 	
 	print('please make selection:')
@@ -121,6 +142,9 @@ def run_program():
 	
 	elif str(selection) == str(3):
 		idr()
+	
+	elif str(selection) == str(4):
+		db_management.controller()
 
 if __name__ == '__main__':
 	run_program()
