@@ -22,6 +22,19 @@ if system != 'Darwin' and is_pythonista:
 	plt.switch_backebd('TkAgg')
 
 '''*****Begin The Functions!****'''
+def retrieve_plts(date):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	sql = f'SELECT start_date, rtm, plt_type, plt_name, plt_path FROM {settings.imgStorage} WHERE start_date = ?'
+	value = (date,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	for i in results:
+		print(i)
+		print('')
+	
+	conn.close()
 
 def save_plt(plt, date, plt_type, rtm='chris'):
 	scope = f'RTM_{rtm}'

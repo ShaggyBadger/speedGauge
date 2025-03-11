@@ -23,8 +23,7 @@ if system != 'Darwin' and is_pythonista:
 
 '''*****Begin The Functions!****'''
 
-def save_plt(plt, date, plt_type, rtm='chris'):
-	scope = f'RTM_{rtm}'
+def save_plt(plt, date, plt_type, driver_id, rtm='chris'):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	sql = f'SELECT DISTINCT formated_start_date FROM {settings.speedGaugeData} WHERE start_date = ?'
@@ -33,11 +32,11 @@ def save_plt(plt, date, plt_type, rtm='chris'):
 	formated_date = c.fetchone()[0]
 	
 	# build directory for images
-	dir_name = 'charts_' + str(formated_date)
+	dir_name = 'idr_charts_' + str(formated_date)
 	chart_dir = settings.WEEKLY_REPORTS_PATH / dir_name
 	chart_dir.mkdir(parents=True, exist_ok=True)
 	
-	img_name = f'{rtm.capitalize()}_{plt_type}_{str(formated_date)}.png'
+	img_name = f'idr_{plt_type}_{driver_id}_{str(formated_date)}.png'
 	img_path = chart_dir / img_name
 	
 	plt.savefig(img_path, dpi=300, bbox_inches='tight')
@@ -75,6 +74,14 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	company_stats = stats['company']
 	driver_stats = stats['driver']
 	
+	scatter_x = []
+	scatter_y = []
+	for dict in driver_stats['driver_dicts']:
+		if dict['percent_speeding_source'] == 'generated':
+			scatter_x.append(dict['start_date'])
+			scatter_y.append(dict['percent_speeding'])
+	scatter_x2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in scatter_x]
+	
 	dates = driver_stats['date_list']
 	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
 	
@@ -102,11 +109,13 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	#plt.figure(figsize=(6,2))
 	plt.tight_layout()
 
-	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='--', linewidth=1)
+	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='--', linewidth=1, zorder=2)
 	
-	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='--', linewidth=1)
+	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='--', linewidth=1, zorder=1)
 	
-	plt.plot(dates2, driver_line_data, label='Driver Speeds', color='black', linestyle='-', linewidth=3)
+	plt.plot(dates2, driver_line_data, label='Driver Speeds', color='black', linestyle='-', linewidth=3, zorder=3)
+	
+	plt.scatter(scatter_x2, scatter_y, color='orange', label='Generated Data Points', s=100, zorder=4)
 	
 	if stat_selection == 'average':
 		plt.axhline(y=0.4, color='red', linewidth=1, label='percent_speeding Objective: 0.4%')
@@ -139,13 +148,13 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	#plt.tight_layout()
 	
 	plt_type = f'LineChart_{stat_selection.capitalize()}'
-	#plt_path = save_plt(plt, dates[-1], plt_type)
+	plt_path = save_plt(plt, dates[-1], plt_type, driver_stats['driver_id'])
 	
 	plt.show()
 	plt.close()
 	plt.clf()
 	
-	#return plt_path
+	return plt_path
 
 def controller(stats, driver_id, rtm='chris'):
 	rtm_stats = stats['rtm']
@@ -163,5 +172,6 @@ def controller(stats, driver_id, rtm='chris'):
 	'''build line charts'''
 	avg_plt_path = build_line_chart(stats, 'average', rtm='chris')
 	#median_plt_path = build_line_chart(stats, 'median', rtm='chris')
+	return avg_plt_path
 	
 

@@ -51,7 +51,8 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 		1110492: 'danny',
 		30069398: 'ron',
 		1152694: 'charles',
-		30202984: 'john r'
+		30202984: 'john r',
+		30190385: 'travis'
 	}
 	
 	if enter_driver is True:
@@ -76,6 +77,7 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 	if stats_package == None:
 		stats_package = analysis.build_analysis()
 	
+	
 	# collect all driver dictionaries
 	driver_dicts = db_utils.idr_driver_data(driver_id)
 	
@@ -86,10 +88,13 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 	stats_package['driver'] = driver_stats
 	
 	# build visualizations
-	plt_paths = idr_visualizations.controller(stats_package, driver_id)
+	#plt_paths = visualizations.retrieve_plts(driver_stats['date_list'][-1])
+	plt_paths = {
+		'driver_graph': idr_visualizations.controller(stats_package, driver_id)
+	} 
 	
 	# build report
-	report_path = idr_reports.create_report(stat_package, plt_paths)
+	report_path = idr_reports.create_report(stats_package, plt_paths)
 	
 
 	
@@ -120,6 +125,8 @@ def run_program():
 	importlib.reload(reports)
 	importlib.reload(db_utils)
 	importlib.reload(idr_analysis)
+	importlib.reload(idr_reports)
+	importlib.reload(idr_visualizations)
 	
 	selection_dict = {
 		'1': 'process spreadsheets',
@@ -141,7 +148,29 @@ def run_program():
 		weekly_analysis()
 	
 	elif str(selection) == str(3):
-		idr()
+		ids = {
+			1201619: 'rodrick',
+			30199025: 'perkins',
+			30072074: 'jesse',
+			5055241: 'brent',
+			30188814: 'jamie',
+			1110492: 'danny',
+			30069398: 'ron',
+			1152694: 'charles',
+			30202984: 'john r',
+			30190385: 'travis',
+			5019067: 'Pete',
+			5000688: 'billy',
+			30219248: 'mike_Russ',
+			30115589: 'john clayton',
+			30186215: 'ibraham'
+		}
+		
+		stats = analysis.build_analysis()
+		for i in ids:
+			print('\n\n')
+			print(ids[i])
+			idr(enter_driver=False, driver_id=i, stats_package=stats)
 	
 	elif str(selection) == str(4):
 		db_management.controller()

@@ -74,7 +74,7 @@ def get_slope(spd_lst):
 def idr_analytics(driver_dicts, driver_id, general_stats):
 	# get current dict
 	cur_dict = driver_dicts[-1]
-	target_dict = driver_dicts[18]
+	#target_dict = driver_dicts[18]
 	dates = [
 		dict['start_date']
 		for dict in driver_dicts
@@ -115,18 +115,21 @@ def idr_analytics(driver_dicts, driver_id, general_stats):
 		
 		if coords != None:
 			incident_coords.append(coords)
-	
+			
 	avg = statistics.mean(speed_list)
 	slope = get_slope(speed_list)
 	median = statistics.median(speed_list)
 	mode = statistics.mode(speed_list)
 	
 	stats = {
+		'driver_id': driver_id,
+		'driver_dicts': driver_dicts,
 		'date_list': dates,
 		'speed_list': speed_list,
 		'avg': round(avg, 2),
 		'median': round(median, 2),
-		'mode': round(mode, 2)
+		'mode': round(mode, 2),
+		'slope': round(slope, 2)
 	}
 	
 	return stats
@@ -134,13 +137,15 @@ def idr_analytics(driver_dicts, driver_id, general_stats):
 
 
 if __name__ == '__main__':
-	driver_id = 30150643
+	driver_id = 30219248
 	
 	driver_dicts = db_utils.idr_driver_data(driver_id)
 	
 	general_stats = analysis.build_analysis()
 	
 	a = idr_analytics(driver_dicts, driver_id, general_stats)
+	
+	print(a)
 	
 	pass
 	

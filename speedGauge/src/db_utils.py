@@ -15,6 +15,7 @@ import settings
 List of functions
 -----------------
 
+find_names_and_ids
 store_json_data
 build_analysisStorage_tbl
 build_imgStorage_tbl
@@ -29,6 +30,24 @@ idr_driver_data
 verify_driver_id
 
 '''
+
+def find_names_and_ids(rtm='chris'):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	sql = f'SELECT driver_name, driver_id FROM {settings.driverInfo} WHERE rtm = ?'
+	value = (rtm,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	intel_dict = {}
+	for result in results:
+		intel_dict[result[1]] = result[0]
+	
+	
+	for i in intel_dict:
+		print(intel_dict[i], i)
+	
+	conn.close()
 
 def store_json_data(stats_json, plt_paths_json, rtm, start_date):
 	conn = settings.db_connection()
@@ -387,4 +406,5 @@ def verify_driver_id(driver_id):
 if __name__ == '__main__':
 	#build_analysisStorage_tbl()
 	pass
-	idr_driver_data()
+	#idr_driver_data()
+	find_names_and_ids()
