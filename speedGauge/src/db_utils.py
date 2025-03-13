@@ -15,6 +15,7 @@ import settings
 List of functions
 -----------------
 
+find_names_and_ids
 store_json_data
 build_analysisStorage_tbl
 build_imgStorage_tbl
@@ -25,8 +26,28 @@ gather_driver_ids
 gather_driver_data
 gather_historical_driver_data
 print_driver_info
+idr_driver_data
+verify_driver_id
 
 '''
+
+def find_names_and_ids(rtm='chris'):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	sql = f'SELECT driver_name, driver_id FROM {settings.driverInfo} WHERE rtm = ?'
+	value = (rtm,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	intel_dict = {}
+	for result in results:
+		intel_dict[result[1]] = result[0]
+	
+	
+	for i in intel_dict:
+		print(intel_dict[i], i)
+	
+	conn.close()
 
 def store_json_data(stats_json, plt_paths_json, rtm, start_date):
 	conn = settings.db_connection()
@@ -289,7 +310,101 @@ def print_driver_info(driver_id):
 	result = c.fetchone()
 	for i in result:
 		print(i)
+	
+def idr_driver_data(driver_id=30150643):
+	'''
+	Retrieves historical driving data for a specific driver from the database.
+	
+	This function fetches the earliest recorded date for the given driver, retrieves 
+	all distinct dates from that point onward, extracts column names from the table, 
+	and compiles the driver's data into a list of dictionaries.
+	
+	Args:
+		driver_id (int, optional): The ID of the driver to retrieve data for. 
+		
+		Defaults to 30150643.
+	
+	Returns:
+		list[dict]: A list of dictionaries where each dictionary represents a row of 
+		driver data, with column names as keys.
+	
+	Notes:
+		- Connects to the database using `settings.db_connection()`.
+		- Queries the earliest `start_date` for the driver.
+		- Retrieves a sorted list of unique `start_date` values from that point onward.
+		- Extracts column names dynamically using `PRAGMA table_info`.
+		- Fetches all records for the driver, ordered by `start_date`.
+		- Converts query results into dictionaries using column names as keys.
+	'''
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	# get earliest date for driver
+	sql = f'SELECT MIN(start_date) FROM {settings.speedGaugeData} WHERE driver_id = ?'
+	value = (driver_id,)
+	c.execute(sql, value)
+	result = c.fetchone()
+	
+	first_date = result[0]
+	
+	# get list of all dates from earliest onward
+	sql = f'SELECT DISTINCT start_date FROM {settings.speedGaugeData} WHERE start_date >= ? ORDER BY start_date ASC'
+	value = (first_date,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	
+	date_list = [result[0] for result in results]
+	
+	# get column names
+	sql = f'PRAGMA table_info({settings.speedGaugeData})'
+	c.execute(sql)
+	results = c.fetchall()
+	column_names = [result[1] for result in results]
+	
+	# build query
+	sql = f'SELECT * FROM {settings.speedGaugeData} WHERE driver_id = ? ORDER BY start_date ASC'
+	value = (driver_id,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	
+	
+	
+	dict_list = [
+		dict(zip(column_names, result)) for result in results
+		]
+	
+	conn.close()
+	
+	return dict_list
+
+def verify_driver_id(driver_id):
+	'''
+	Verify if a given driver ID exists in the database.
+	
+	Args:
+		driver_id (int): The ID of the driver to check.
+	
+	Returns:
+		bool: True if the driver ID exists, False otherwise.
+	'''
+
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	sql = f'SELECT driver_name FROM {settings.speedGaugeData} WHERE driver_id = ?'
+	value = (driver_id,)
+	c.execute(sql, value)
+	result = c.fetchone()
+	conn.close()
+	
+	if result == None:
+		return False
+	
+	else:
+		return True
 
 if __name__ == '__main__':
 	#build_analysisStorage_tbl()
 	pass
+	#idr_driver_data()
+	find_names_and_ids()

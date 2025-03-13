@@ -204,7 +204,7 @@ def create_overview_frame(data_packet):
 	content.append(table)
 
 	content.append(Spacer(1,0.5*inch))
-	
+
 	# build rtm subtable
 	prev_prediction_full = predict_next_week(rtm_stats[:-1])
 	cur_prediction_full = predict_next_week(rtm_stats)

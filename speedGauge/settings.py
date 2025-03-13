@@ -16,6 +16,7 @@ BASE_DIR = Path(__file__).parent
 # Main directories inside root
 IMG_PATH = BASE_DIR / 'images'
 REPORTS_PATH = BASE_DIR / 'reports'
+IDR_REPORTS_PATH = BASE_DIR / 'idr_reports'
 
 # Nested directories
 IMG_ASSETS_PATH = IMG_PATH / 'assets'
