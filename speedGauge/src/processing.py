@@ -200,14 +200,8 @@ def update_db(dict_list):
 		if result == None:
 			sql = f'INSERT INTO {settings.driverInfo} (driver_name, driver_id) VALUES (?, ?)'
 			values = (driver_name, driver_id)
-			print(
-				f'Found new driver_id in dataset. Adding driver to database:'
-		 		f'\n{driver_id} - {driver_name}\ndriver_id type: {type(driver_id)}'
-				)
-			selection = input('\nFound driver not in driverInfo table. should we add it? y/n: ')
-			if selection == 'y':
-				c.execute(sql, values)
-
+			c.execute(sql, values)
+			
 	conn.commit()
 	
 	
@@ -457,48 +451,51 @@ def update_missing_speeds(print_errors=False):
 			if print_errors is True:
 				print(f'Error processing driver {driver_id}: {e}')
 		
-		for dict in dict_list:	
-			date = dict['date']
-			sql = f'SELECT start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date FROM {tbl2} WHERE human_readable_start_date = ?'
-			value = (date,)
-			c.execute(sql, value)
-			result = c.fetchone()
-			
-			if result is None:
-				print(f'Skipping insertion for driver_id {driver_id} and date {date}: No matching data')
-				continue
-			
-			percent_speeding = round(dict['percent_speeding'], 2)
-			driver_id = dict['driver_id']
-			start_date = result[0]
-			end_date = result[1]
-			formated_start_date = result[2]
-			formated_end_date = result[3]
-			human_readable_start_date = result[4]
-			human_readable_end_date = result[5]
-					
-			sql = f'INSERT INTO {tbl2} (driver_id, driver_name, percent_speeding, start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date, percent_speeding_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-			values = (
-				driver_id,
-				driver_name,
-				percent_speeding,
-				start_date,
-				end_date,
-				formated_start_date,
-				formated_end_date,
-				human_readable_start_date,
-				human_readable_end_date,
-				'generated'
-				)
-			
-			c.execute(sql, values)
-			
-			if counter % 100 ==0:
-				print(f'Insering values...')
-				for i in values:
-					print(i)
-				print('***************\n')
-			counter += 1
+		try:
+			for dict in dict_list:	
+				date = dict['date']
+				sql = f'SELECT start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date FROM {tbl2} WHERE human_readable_start_date = ?'
+				value = (date,)
+				c.execute(sql, value)
+				result = c.fetchone()
+				
+				if result is None:
+					print(f'Skipping insertion for driver_id {driver_id} and date {date}: No matching data')
+					continue
+				
+				percent_speeding = round(dict['percent_speeding'], 2)
+				driver_id = dict['driver_id']
+				start_date = result[0]
+				end_date = result[1]
+				formated_start_date = result[2]
+				formated_end_date = result[3]
+				human_readable_start_date = result[4]
+				human_readable_end_date = result[5]
+						
+				sql = f'INSERT INTO {tbl2} (driver_id, driver_name, percent_speeding, start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date, percent_speeding_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+				values = (
+					driver_id,
+					driver_name,
+					percent_speeding,
+					start_date,
+					end_date,
+					formated_start_date,
+					formated_end_date,
+					human_readable_start_date,
+					human_readable_end_date,
+					'generated'
+					)
+				
+				c.execute(sql, values)
+				
+				if counter % 100 ==0:
+					print(f'Insering values...')
+					for i in values:
+						print(i)
+					print('***************\n')
+				counter += 1
+		except:
+			pass
 	conn.commit()
 	print(f'Entries built using interpolated data: {counter}')
 	
