@@ -594,4 +594,5 @@ def main(initializer=False):
 
 
 if __name__ == '__main__':
-	pass
+	update_missing_speeds()
+	interpolated_gen_report()

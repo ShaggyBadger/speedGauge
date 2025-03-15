@@ -52,7 +52,8 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 		30069398: 'ron',
 		1152694: 'charles',
 		30202984: 'john r',
-		30190385: 'travis'
+		30190385: 'travis',
+		30150643: 'me'
 	}
 	
 	if enter_driver is True:
@@ -163,7 +164,8 @@ def run_program():
 			5000688: 'billy',
 			30219248: 'mike_Russ',
 			30115589: 'john clayton',
-			30186215: 'ibraham'
+			30186215: 'ibraham',
+			30150643: 'me'
 		}
 		
 		stats = analysis.build_analysis()

@@ -22,7 +22,7 @@ def filter_speed_list(spd_lst, max_stdev=3):
 	stdev = statistics.stdev(spd_lst)
 	avg = statistics.mean(spd_lst)
 	
-	max_spd = avg + (max_std * stdev)
+	max_spd = avg + (max_stdev * stdev)
 	
 	spd = [speed for speed in spd_lst if speed < max_spd]
 	
