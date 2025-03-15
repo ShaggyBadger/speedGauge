@@ -319,7 +319,7 @@ def update_driverInfo2(file_name):
 def get_driver_dates(driver_id):
 	'''
 	this returns a list of dates that 
-	the driver has. it finrs the first
+	the driver has. it finds the first
 	date the drive has, then makes a
 	filtered list for all the dates in
 	the db from that point on
@@ -355,25 +355,7 @@ def get_driver_dates(driver_id):
 	conn.close()
 	return filtered_dates
 
-def generate_missing_speed(driver_id, poly_degree=2):
-	conn = settings.db_connection()
-	c = conn.cursor()
-	tbl1 = settings.driverInfo
-	tbl2 = settings.speedGaugeData
-	
-	filtered_dates = get_driver_dates(driver_id)
-	speeds = []
-	for date in filtered_dates:
-		sql = f'SELECT percent_speeding FROM {tbl2} WHERE driver_id = ? AND human_readable_start_date = ?'
-		values = (driver_id, date)
-		c.execute(sql, values)
-		result = c.fetchone()
-		if result != None:
-			speeds.append(result[0])
-		else:
-			speeds.append(None)
-	
-
+def generate_speed(speeds, c):
 	'''
 	_____CHATGPT WIZARDRY_____
 	     DO NOT MESS WITH
@@ -417,10 +399,42 @@ def generate_missing_speed(driver_id, poly_degree=2):
 			'driver_id': driver_id
 		}
 		dict_list.append(dict)
-		
-	conn.close()
-	return dict_list
 	
+	c.close()
+		
+	return dict_list
+
+def generate_missing_speed(driver_id, poly_degree=2):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	tbl1 = settings.driverInfo
+	tbl2 = settings.speedGaugeData
+	
+	filtered_dates = get_driver_dates(driver_id)
+	speeds = []
+	
+	sql = f'SELECT percent_speeding FROM {settings.speedGaugeData} WHERE driver_id = ? AND human_readable_start_date = ?'
+	values = (driver_id, filtered_dates[-1])
+	c.execute(sql, values)
+	result = c.fetchone()
+
+	for date in filtered_dates:
+		sql = f'SELECT percent_speeding FROM {tbl2} WHERE driver_id = ? AND human_readable_start_date = ?'
+		values = (driver_id, date)
+		c.execute(sql, values)
+		result = c.fetchone()
+		if result != None:
+			speeds.append(result[0])
+		else:
+			speeds.append(None)
+	
+	fresh_cursor = conn.cursor()
+	dict_list = generate_missing_speed(speeds, fresh_cursor)
+	
+	conn.close()
+	
+	return dict_list
+
 def update_missing_speeds(print_errors=False):
 	conn = settings.db_connection()
 	c = conn.cursor()
@@ -451,51 +465,50 @@ def update_missing_speeds(print_errors=False):
 			if print_errors is True:
 				print(f'Error processing driver {driver_id}: {e}')
 		
-		try:
-			for dict in dict_list:	
-				date = dict['date']
-				sql = f'SELECT start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date FROM {tbl2} WHERE human_readable_start_date = ?'
-				value = (date,)
-				c.execute(sql, value)
-				result = c.fetchone()
-				
-				if result is None:
-					print(f'Skipping insertion for driver_id {driver_id} and date {date}: No matching data')
-					continue
-				
-				percent_speeding = round(dict['percent_speeding'], 2)
-				driver_id = dict['driver_id']
-				start_date = result[0]
-				end_date = result[1]
-				formated_start_date = result[2]
-				formated_end_date = result[3]
-				human_readable_start_date = result[4]
-				human_readable_end_date = result[5]
-						
-				sql = f'INSERT INTO {tbl2} (driver_id, driver_name, percent_speeding, start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date, percent_speeding_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-				values = (
-					driver_id,
-					driver_name,
-					percent_speeding,
-					start_date,
-					end_date,
-					formated_start_date,
-					formated_end_date,
-					human_readable_start_date,
-					human_readable_end_date,
-					'generated'
-					)
-				
-				c.execute(sql, values)
-				
-				if counter % 100 ==0:
-					print(f'Insering values...')
-					for i in values:
-						print(i)
-					print('***************\n')
-				counter += 1
-		except:
-			pass
+		
+		for dict in dict_list:	
+			date = dict['date']
+			sql = f'SELECT start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date FROM {tbl2} WHERE human_readable_start_date = ?'
+			value = (date,)
+			c.execute(sql, value)
+			result = c.fetchone()
+			
+			if result is None:
+				print(f'Skipping insertion for driver_id {driver_id} and date {date}: No matching data')
+				continue
+			
+			percent_speeding = round(dict['percent_speeding'], 2)
+			driver_id = dict['driver_id']
+			start_date = result[0]
+			end_date = result[1]
+			formated_start_date = result[2]
+			formated_end_date = result[3]
+			human_readable_start_date = result[4]
+			human_readable_end_date = result[5]
+					
+			sql = f'INSERT INTO {tbl2} (driver_id, driver_name, percent_speeding, start_date, end_date, formated_start_date, formated_end_date, human_readable_start_date, human_readable_end_date, percent_speeding_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+			values = (
+				driver_id,
+				driver_name,
+				percent_speeding,
+				start_date,
+				end_date,
+				formated_start_date,
+				formated_end_date,
+				human_readable_start_date,
+				human_readable_end_date,
+				'generated'
+				)
+			
+			c.execute(sql, values)
+			
+			if counter % 100 ==0:
+				print(f'Insering values...')
+				for i in values:
+					print(i)
+				print('***************\n')
+			counter += 1
+
 	conn.commit()
 	print(f'Entries built using interpolated data: {counter}')
 	
@@ -583,15 +596,13 @@ def main(initializer=False):
 			mv_completed_file(cleaner_data, file)
 			
 			# search for and update any missing speeds
-			if initializer is False:
-				update_missing_speeds()
-				interpolated_gen_report()
+			#if initializer is False:
+				#update_missing_speeds()
+				#interpolated_gen_report()
 			
 			# print out a summary
 			summary = processing_summary()
 			print(summary)
-		
-
 
 if __name__ == '__main__':
-	pass
+	update_missing_speeds()

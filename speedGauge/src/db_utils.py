@@ -403,8 +403,36 @@ def verify_driver_id(driver_id):
 	else:
 		return True
 
+def search_by_driver_name(name=None):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	
+	sql = f'SELECT driver_name, driver_id FROM {settings.speedGaugeData} WHERE start_date = ?'
+	value = ('2025-02-16 00:00',)
+	c.execute(sql, value)
+	results = c.fetchall()
+	
+	for result in results:
+		driver_id = result[1]
+		sql = f'UPDATE {settings.driverInfo} SET rtm = ? WHERE driver_id = ?'
+		values = ('chris', driver_id)
+		c.execute(sql, values)
+	conn.commit()
+	
+	sql = f'SELEct * FROM {settings.driverInfo} WHERE rtm=?'
+	value = ('chris',)
+	c.execute(sql, value)
+	results = c.fetchall()
+	print(len(results))
+	
+	
+	conn.close()
+
 if __name__ == '__main__':
 	#build_analysisStorage_tbl()
 	pass
 	#idr_driver_data()
-	find_names_and_ids()
+	search_by_driver_name()
+	
+
