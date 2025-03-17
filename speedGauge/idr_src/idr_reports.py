@@ -1,3 +1,8 @@
+import sys
+import os
+# Add the project root directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Image, Spacer, PageBreak, Frame, PageTemplate
 from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet
@@ -13,6 +18,9 @@ from pathlib import Path
 import sys, os
 from datetime import datetime
 import numpy as np
+from PIL import Image as PILImage
+from io import BytesIO
+
 
 
 # Add the project root directory to the Python path
@@ -114,6 +122,60 @@ def build_output_path(date, driver_id):
 	file_path = report_dir / file_name
 	
 	return file_path
+
+def build_data_subtable(result):
+	img = PILImage.open(BytesIO(result[0]))
+	date = Paragraph(f'<strong> {str(result[2])} </strong>')
+	location = Paragraph(f'<strong> {str(result[1])} </strong>')
+	speed_limit = Paragraph(f'<strong> {str(result[3])} </strong>')
+	speed = Paragraph(f'<strong> {str(result[4])} </strong>')
+	
+	date_lable = Paragraph('<strong>Date</strong>')
+	location_lable = Paragraph('<strong>Location</strong>')
+	speed_limit_lable = Paragraph('<strong>Speed Limit</strong>')
+	speed_lable = Paragraph('<strong>Driver Speed</strong>')
+	
+	img_buffer = BytesIO()
+	img.save(img_buffer, format="PNG")
+	img_buffer.seek(0)
+	
+	rLab_image = Image(img_buffer)
+	
+	tbl_header = Paragraph(f'<font color={colors.white}><strong>Incident Data</strong></font>', CenteredAligned)
+	
+	tbl_data = [
+		[tbl_header, ''],
+		[date_lable, date],
+		[location_lable, location],
+		[speed_limit_lable, speed_limit],
+		[speed_lable, speed]
+		]
+	
+	tbl = Table(tbl_data)
+	tbl.setStyle([
+		('ALIGN', (0,0), (-1,-1), 'CENTER'),
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+		('BACKGROUND', (0,0), (-1,0), settings.swto_blue),
+		('SPAN', (0,0), (-1, 0)),
+		('ROWBACKGROUNDS', (0,1), (1,-1), ['#ffffff', '#d3d3d3'])
+		])
+	return tbl
+	
+def adj_img_size(img, target_width):
+	w, h = img.size
+	aspect_ratio = h / w
+	target_height = target_width * aspect_ratio
+	
+	img_buffer = BytesIO()
+	img.save(img_buffer, format="PNG")
+	img_buffer.seek(0)
+	
+	
+	img_reader = ImageReader(img_buffer)
+	
+	adjusted_img = Image(img_reader, width=target_width, height=target_height)
+	
+	return adjusted_img
 
 def create_overview_frame(data_packet):
 	page_width = letter[0]
@@ -410,6 +472,64 @@ def create_overview_frame(data_packet):
 	
 	content.append(stat_tbl)
 	
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	driver_id = cur_driver_data['driver_id']
+	
+	sql = f'SELECT speed_map, location, human_readable_start_date, speed_limit, speed FROM {settings.speedGaugeData} WHERE driver_id = ? AND speed_map NOT NULL ORDER BY start_date ASC'
+	value = (driver_id,)
+	c.execute(sql, value)
+	results = c.fetchall()
+	conn.close()
+	
+	''' build speed map table '''
+	''' ********************* '''
+	
+	content.append(PageBreak())
+	
+	map_tbl_data = []
+	
+	for result in results:
+		col2_w = page_width * 0.30
+		col3_w = page_width * 0.50
+		
+		map_w = col3_w * 0.75
+		aspect_ratio = 2/3
+		map_h = map_w * aspect_ratio
+		
+		data_subtable = build_data_subtable(result)
+		
+		img_bytes = result[0]
+		img_stream = BytesIO(img_bytes)
+		
+		map = Image(img_stream, width=map_w, height=map_h)
+			
+		map_tbl_data.append([
+			'',
+			data_subtable,
+			map,
+			'' 
+			])
+	
+	stat_tbl = Table(
+		map_tbl_data,
+		colWidths = [
+			page_width * 0.10,
+			col2_w,
+			col3_w,
+			page_width * 0.10
+			]
+		)
+	
+	stat_tbl.setStyle([
+		('ALIGN', (0,0), (-1,-1), 'CENTER'),
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),	
+		('ROWBACKGROUNDS', (1,0), (2,-1), ['#cad7f2'])
+		])
+		
+	content.append(stat_tbl)
+	
 	
 	return content
 	
@@ -418,8 +538,6 @@ def create_report(stats, plt_paths):
 	rtm_stats = stats['rtm']
 	company_stats = stats['company']
 	driver_stats = stats['driver']
-	
-
 	
 	date = db_utils.get_max_date()
 	output_path = build_output_path(date, driver_stats['driver_id'])

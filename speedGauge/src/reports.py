@@ -13,6 +13,7 @@ from pathlib import Path
 import sys, os
 from datetime import datetime
 import numpy as np
+from io import BytesIO
 
 
 # Add the project root directory to the Python path
@@ -332,8 +333,6 @@ def create_overview_frame(data_packet):
 	content.append(analysis_tbl)
 	
 	return content
-
-
 
 
 

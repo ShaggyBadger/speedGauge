@@ -11,6 +11,7 @@ from src import individualDriver
 from idr_src import idr_analysis
 from idr_src import idr_visualizations
 from idr_src import idr_reports
+from idr_src import idr_map
 import matplotlib.pyplot as plt
 import console
 import json
@@ -27,7 +28,7 @@ def inspection():
 
 def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 	'''
-	this can work from makn seledtion
+	this can work from main seledtion
 	screen, in which case enter driver 
 	is True
 	
@@ -92,17 +93,13 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 	#plt_paths = visualizations.retrieve_plts(driver_stats['date_list'][-1])
 	plt_paths = {
 		'driver_graph': idr_visualizations.controller(stats_package, driver_id)
-	} 
+	}
+	
+	# build map blobs in db
+	idr_map.controller(driver_id)
 	
 	# build report
 	report_path = idr_reports.create_report(stats_package, plt_paths)
-	
-
-	
-	
-		
-
-
 
 def weekly_analysis():
 	stat_packet = analysis.build_analysis()
@@ -122,13 +119,6 @@ def weekly_analysis():
 	report_path = reports.create_report(stat_packet, plt_paths)
 
 def run_program():
-	importlib.reload(visualizations)
-	importlib.reload(reports)
-	importlib.reload(db_utils)
-	importlib.reload(idr_analysis)
-	importlib.reload(idr_reports)
-	importlib.reload(idr_visualizations)
-	
 	selection_dict = {
 		'1': 'process spreadsheets',
 		'2': 'run weekly analytics',
@@ -165,19 +155,31 @@ def run_program():
 			30219248: 'mike_Russ',
 			30115589: 'john clayton',
 			30186215: 'ibraham',
-			30150643: 'me'
+			30150643: 'me',
+			30135448: 'carmello'
 		}
 		
 		stats = analysis.build_analysis()
 		for i in ids:
 			print('\n\n')
 			print(ids[i])
-			idr(enter_driver=False, driver_id=i, stats_package=stats)
+			idr(
+				enter_driver=False,
+				driver_id=i,
+				stats_package=stats
+				)
 	
 	elif str(selection) == str(4):
 		db_management.controller()
 
 if __name__ == '__main__':
+	importlib.reload(visualizations)
+	importlib.reload(reports)
+	importlib.reload(db_utils)
+	importlib.reload(idr_analysis)
+	importlib.reload(idr_reports)
+	importlib.reload(idr_visualizations)
+	importlib.reload(idr_map)
 	run_program()
 	#run_weekly_analyis()
 	#weekly_analysis()

@@ -12,13 +12,24 @@ import PIL.Image as Image
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-def construct_img_name(driver_id):
+def construct_img_name(driver_id, date):
+	conn = settings.db_connection()
+	c = conn.cursor()
+	sql = f'SELECT formated_start_date FROM {settings.speedGaugeData} WHERE start_date = ?'
+	value = (date,)
+	c.execute(sql, value)
+	formatted_date = c.fetchone()[0]
+	conn.close()
+	
 	dir_name = 'maps'
-	subdir_name = str(driver_id)
+	subdir_name = str(formatted_date)
 	chart_dir = settings.MAP_PATH / dir_name / subdir_name
 	chart_dir.mkdir(parents=True, exist_ok=True)
 	
-	return chart_dir
+	img_name = f'{driver_id}_map.png'
+	img_path = chart_dir / img_name
+	
+	return img_path
 
 def save_map(img, center_coords, zoom):
 	# build directory for images
@@ -34,10 +45,10 @@ def save_map(img, center_coords, zoom):
 	return img_path
 
 def build_base_map(center_coords, zoom):
-	lat_center = center_coords[0]
-	lon_center = center_coords[1]
+	lat = center_coords[0]
+	lon = center_coords[1]
 
-	url = f"https://static-maps.yandex.ru/1.x/?ll={lon_center},{lat_center}&z={zoom}&size=600,400&l=map&,pm2blm&lang=en_US"
+	url = f"https://static-maps.yandex.ru/1.x/?ll={lon},{lat}&z={zoom}&size=600,400&l=map&pt={lon},{lat},pm2blm&lang=en_US"
 	
 	response = requests.get(url)
 
@@ -202,13 +213,32 @@ def temp(coord_list, baseMap_path):
 	ax.set_xticks([])
 	ax.set_yticks([])
 	
-	plt.show()	
-	
-	
+	plt.show()
 
+def save_img_blob(driver_id, date, img):
+	conn = settings.db_connection()
+	c = conn.cursor()
 	
+	img_byte_arr = BytesIO()
+	img.save(img_byte_arr, format='PNG')
+	img_blob = img_byte_arr.getvalue()
+	
+	sql = f'UPDATE {settings.speedGaugeData} SET speed_map = ? WHERE driver_id = ? AND start_date = ?'
+	values = (img_blob, driver_id, date)
+	
+	c.execute(sql, values)
+	conn.commit()
+	conn.close()
+	
+def get_map(url, date, driver_id):
+	zoom = 12
+	coords = extract_coordinates(url)
+	
+	img = build_base_map(coords, zoom)
+	
+	return img
 
-def controller(driver_id):
+def controller(driver_id, overwrite_img=False):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
@@ -216,15 +246,47 @@ def controller(driver_id):
 	value = (driver_id,)
 	c.execute(sql, value)
 	results = c.fetchall()
-	
-	map_generation_dates = []
-	for result in results:
-		pass
-	
 	conn.close()
+	
+	first_filter = [
+		result for result
+		in results
+		if result[0] is not None
+		]
+	
+	second_filter = [
+		result for result
+		in first_filter
+		if result[0] != '-'
+		]
+	
+	for result in second_filter:
+		url = result[0]
+		speed_map = result[1]
+		date = result[2]
+		
+		if speed_map is None or overwrite_img is True:
+			img = get_map(url, date, driver_id)
+			save_img_blob(driver_id, date, img)
+		
+	
+	
+
+
+
+def build_full_map():
+	center_lat = 36.0750039
+	center_lon = -79.9345196
+	center_coords = (center_lat, center_lon)
+	zoom = 8
+	target_ids = db_utils.gather_driver_ids()
+	coord_list = build_coord_list(target_ids, date_range='full')
+	baseMap = build_base_map(center_coords, zoom)
+	baseMap_path = save_map(baseMap, center_coords, zoom)
+	img = temp(coord_list, baseMap_path)
 	
 
 if __name__ == '__main__':
-	pass
-
+	controller(30190385)
+	
 	#url = f"https://static-maps.yandex.ru/1.x/?ll={lon_center},{lat_center}&z={zoom}&size=600,400&l=map&pt={lon_center},{lat_center},pm2blm&lang=en_US"
