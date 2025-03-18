@@ -162,7 +162,7 @@ def build_data_subtable(result):
 	return tbl
 
 def build_url(url):
-	url_link = Paragraph(f'<a href="{url}"><font color="#0000EE"><u><strong>Link to Map</strong></u></font></a>')
+	url_link = Paragraph(f'<a href="{url}">Link to Map</a>')
 	return url_link
 
 def create_overview_frame(data_packet):
