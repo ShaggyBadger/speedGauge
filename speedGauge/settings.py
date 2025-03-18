@@ -20,6 +20,7 @@ IDR_REPORTS_PATH = BASE_DIR / 'idr_reports'
 
 # Nested directories
 IMG_ASSETS_PATH = IMG_PATH / 'assets'
+MAP_PATH = IMG_PATH / 'maps'
 WEEKLY_REPORTS_PATH = IMG_PATH / 'weeklyReports'
 DATA_PATH = BASE_DIR / 'data'
 
@@ -82,7 +83,8 @@ mainTbl_column_info = {
 	'formated_end_date': 'TEXT',
 	'human_readable_start_date': 'TEXT',
 	'human_readable_end_date': 'TEXT',
-	'percent_speeding_source': 'TEXT'
+	'percent_speeding_source': 'TEXT',
+	'speed_map': 'BLOB'
 	}
 
 imgStorageTbl_column_info = {

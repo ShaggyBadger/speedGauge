@@ -407,4 +407,3 @@ if __name__ == '__main__':
 	#build_analysisStorage_tbl()
 	pass
 	#idr_driver_data()
-	find_names_and_ids()
