@@ -156,7 +156,9 @@ def run_program():
 			30115589: 'john clayton',
 			30186215: 'ibraham',
 			30150643: 'me',
-			30135448: 'carmello'
+			30135448: 'carmello',
+			30186711: 'ingram',
+			30055670: 'david heath'
 		}
 		
 		stats = analysis.build_analysis()
