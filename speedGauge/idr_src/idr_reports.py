@@ -165,6 +165,130 @@ def build_url(url):
 	url_link = Paragraph(f'<a href="{url}">Link to Map</a>')
 	return url_link
 
+def build_driver_stats_table(data_packet,  lname, fname):
+	'''' sort necessary dictd '''
+	page_width = letter[0]
+	stats = data_packet['stats']
+	plt_paths = data_packet['plt_paths']
+	styles = data_packet['styles']
+	doc = data_packet['doc']
+	
+	# rtm data
+	rtm_stats = stats['rtm']
+	cur_rtm_data = rtm_stats[-1]
+	prev_rtm_data = rtm_stats[-2]
+	
+	# company data
+	company_stats = stats['company']
+	cur_company_data = company_stats[-1]
+	prev_company_data = company_stats[-2]
+
+	
+	# driver data
+	driver_stats = stats['driver']
+	driver_id = driver_stats['driver_id']
+	
+	cur_driver_data = driver_stats['driver_dicts'][-1]
+	prev_driver_data = driver_stats['driver_dicts'][-2]
+	
+	''' build sub_table data '''
+	slope = driver_stats['slope']
+	
+	percent_change_in_speed = get_percent_change(cur_driver_data['percent_speeding'], prev_driver_data['percent_speeding'])
+	
+	abs_change_in_speed = cur_driver_data['percent_speeding'] - prev_driver_data['percent_speeding']
+	
+	percent_from_company_avg = get_percent_change(cur_driver_data['percent_speeding'] ,cur_company_data['average'])
+	
+	l_sub_table_title = Paragraph(f'<font color=white>Driver Statistics: {lname}</font>', CenteredAligned)
+	
+	percent_from_rtm_avg = get_percent_change(cur_driver_data['percent_speeding'] ,cur_rtm_data['average'])
+	
+	''' build sub_table '''
+	l_sub_table_data = [
+		[
+			l_sub_table_title,
+			''
+			],
+		[
+			Paragraph('Last Week Percent Speeding'),
+			bld_stat_color(prev_driver_data['percent_speeding'], threshold=0.4)
+			],
+		[
+			Paragraph('Percent Change In Speed'),
+			bld_stat_color(percent_change_in_speed, arrow=True, percentage=True)
+			],
+		[
+			Paragraph('Absolute Value Of Change In Speed'),
+			bld_stat_color(abs_change_in_speed, percentage=False, arrow=True)
+			],
+		[
+			Paragraph(f'Driver Average Percent Speeding'),
+			bld_stat_color(driver_stats['avg'], percentage=True, threshold=0.4, arrow=False)
+			],
+		[
+			Paragraph('Current Slope Trajectory of Percent Speeding Data Points'),
+			bld_stat_color(driver_stats['slope'], percentage=False, arrow=True)
+			]
+		]
+		
+	l_sub_table = Table(
+		l_sub_table_data
+		)
+	
+	l_sub_table.setStyle([
+		('ALIGN', (0,0), (-1,-1), 'CENTER'),
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+		('SPAN', (0,0), (-1,0)),
+		('BACKGROUND', (0,0), (-1,0), settings.swto_blue),
+		('ROWBACKGROUNDS', (0,1), (1,-1), ['#ffffff', '#d3d3d3'])
+		])
+	
+	''' build main table '''
+	img_path = settings.IMG_ASSETS_PATH / 'spear.jpg'
+	img = Image(img_path)
+	
+	w, h = img.drawWidth, img.drawHeight
+	aspect_ratio = w / h
+	
+	adjusted_h = 100
+	adjusted_w = adjusted_h * aspect_ratio
+	
+	adjusted_img = Image(
+		img_path,
+		width=adjusted_w, height=adjusted_h
+		)
+	
+	# build main table
+	main_table_data = [
+		[
+			'',
+			adjusted_img,
+			l_sub_table,
+			adjusted_img,
+			''
+			]
+		]
+	
+	main_table = Table(
+		main_table_data,
+		colWidths = [
+			page_width * 0.10,
+			page_width * 0.20,
+			page_width * 0.40,
+			page_width * 0.20,
+			page_width * 0.10
+			]
+		)
+	
+	main_table.setStyle([
+		('ALIGN', (0,0), (-1,-1), 'CENTER'),
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+		])
+	
+	
+	return main_table
+
 def create_overview_frame(data_packet):
 	page_width = letter[0]
 	
@@ -194,6 +318,14 @@ def create_overview_frame(data_packet):
 	driver_graph_path = plt_paths['driver_graph']
 	cell_width = page_width * 0.4
 	
+	percent_change_in_speed = get_percent_change(cur_driver_data['percent_speeding'], prev_driver_data['percent_speeding'])
+	
+	abs_change_in_speed = cur_driver_data['percent_speeding'] - prev_driver_data['percent_speeding']
+	
+	percent_from_company_avg = get_percent_change(cur_driver_data['percent_speeding'] ,cur_company_data['average'])
+	
+	percent_from_rtm_avg = get_percent_change(cur_driver_data['percent_speeding'] ,cur_rtm_data['average'])
+	
 	driver_graph_img = Image(driver_graph_path)
 	
 	w, h = driver_graph_img.drawWidth, driver_graph_img.drawHeight
@@ -202,13 +334,7 @@ def create_overview_frame(data_packet):
 	
 	driver_graph_img.drawHeight = h * (cell_width / w)
 	
-	percent_change_in_speed = get_percent_change(cur_driver_data['percent_speeding'], prev_driver_data['percent_speeding'])
 	
-	abs_change_in_speed = cur_driver_data['percent_speeding'] - prev_driver_data['percent_speeding']
-	
-	percent_from_company_avg = get_percent_change(cur_driver_data['percent_speeding'] ,cur_company_data['average'])
-	
-	percent_from_rtm_avg = get_percent_change(cur_driver_data['percent_speeding'] ,cur_rtm_data['average'])
 	
 	driver_name = cur_driver_data['driver_name']
 	fname = driver_name.strip().split()[0]
@@ -265,62 +391,10 @@ def create_overview_frame(data_packet):
 	content.append(tbl1)
 	content.append(Spacer(1,0.5*inch))
 	
-	'''**** compare to last week table ****'''
-	tbl2_data = [
-		[
-			'',
-			Paragraph(f'<font color=white>Driver Statistics: {lname}</font>', CenteredAligned),
-			''
-			''
-			],
-		[
-			'',
-			Paragraph('Last Week Percent Speeding'),
-			bld_stat_color(prev_driver_data['percent_speeding'], threshold=0.4),
-			''],
-		[
-			'',
-			Paragraph('Percent Change In Speed'),
-			bld_stat_color(percent_change_in_speed, arrow=True, percentage=True),
-			''
-			],
-		[
-			'',
-			Paragraph('Absolute Value Of Change In Speed'),
-			bld_stat_color(abs_change_in_speed, percentage=False, arrow=True),
-			''
-			],
-		[
-			'',
-			Paragraph(f'Driver Average Percent Speeding'),
-			bld_stat_color(driver_stats['avg'], percentage=True, threshold=0.4, arrow=False),
-			''
-			],
-		[
-			'',
-			Paragraph('Current Slope Trajectory of Percent Speeding Data Points'),
-			bld_stat_color(driver_stats['slope'], percentage=False, arrow=True),
-			''
-			]
-		]
-	tbl2 = Table(
-		tbl2_data,
-		colWidths = [
-			page_width * 0.10,
-			page_width * 0.25,
-			page_width * 0.20,
-			page_width * 0.45
-			]
-		)
-		
-	tbl2.setStyle([
-		('ALIGN', (0,0), (-1,-1), 'CENTER'),
-		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-		('SPAN', (1,0), (2,0)),
-		('BACKGROUND', (1,0), (2,0), settings.swto_blue),
-		('ROWBACKGROUNDS', (1,1), (2,-1), ['#ffffff', '#d3d3d3'])
-		])
-	content.append(tbl2)
+	'''**** driver stats table ****'''
+	driver_stats_table = build_driver_stats_table(data_packet, lname, fname)
+	
+	content.append(driver_stats_table)
 	content.append(Spacer(1,0.5*inch))
 	
 	'''**** Comparaative Stats Table ****'''
