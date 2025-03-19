@@ -167,6 +167,7 @@ def build_url(url):
 
 def build_driver_stats_table(data_packet,  lname, fname):
 	'''' sort necessary dictd '''
+	page_width = letter[0]
 	stats = data_packet['stats']
 	plt_paths = data_packet['plt_paths']
 	styles = data_packet['styles']
@@ -239,11 +240,54 @@ def build_driver_stats_table(data_packet,  lname, fname):
 		('ALIGN', (0,0), (-1,-1), 'CENTER'),
 		('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
 		('SPAN', (0,0), (-1,0)),
-		('BACKGROUND', (1,0), (2,0), settings.swto_blue),
-		('ROWBACKGROUNDS', (1,1), (2,-1), ['#ffffff', '#d3d3d3'])
+		('BACKGROUND', (0,0), (-1,0), settings.swto_blue),
+		('ROWBACKGROUNDS', (0,1), (1,-1), ['#ffffff', '#d3d3d3'])
 		])
 	
-	return l_sub_table
+	''' build main table '''
+	img_path = settings.IMG_ASSETS_PATH / 'spear.jpg'
+	img = Image(img_path)
+	
+	w, h = img.drawWidth, img.drawHeight
+	aspect_ratio = w / h
+	
+	adjusted_h = 100
+	adjusted_w = adjusted_h * aspect_ratio
+	
+	adjusted_img = Image(
+		img_path,
+		width=adjusted_w, height=adjusted_h
+		)
+	
+	# build main table
+	main_table_data = [
+		[
+			'',
+			adjusted_img,
+			l_sub_table,
+			adjusted_img,
+			''
+			]
+		]
+	
+	main_table = Table(
+		main_table_data,
+		colWidths = [
+			page_width * 0.10,
+			page_width * 0.20,
+			page_width * 0.40,
+			page_width * 0.20,
+			page_width * 0.10
+			]
+		)
+	
+	main_table.setStyle([
+		('ALIGN', (0,0), (-1,-1), 'CENTER'),
+		('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+		])
+	
+	
+	return main_table
 
 def create_overview_frame(data_packet):
 	page_width = letter[0]
