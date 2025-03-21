@@ -334,8 +334,6 @@ def create_overview_frame(data_packet):
 	
 	driver_graph_img.drawHeight = h * (cell_width / w)
 	
-	
-	
 	driver_name = cur_driver_data['driver_name']
 	fname = driver_name.strip().split()[0]
 	lname = driver_name.strip().split()[-1]
