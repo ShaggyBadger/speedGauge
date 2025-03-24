@@ -10,7 +10,10 @@ import numpy as np
 import math
 import statistics
 import sqlite3
+import requests
 import console
+from io import BytesIO
+from PIL import Image
 from src import db_utils
 
 def filter_speed_list(spd_lst, max_stdev=3):
@@ -33,6 +36,35 @@ def get_percent_change(val1, val2):
 		return ((val1 - val2) / (val2 + 1)) * 100
 	else:
 		return ((val1 - val2) / (val2)) * 100
+
+def build_location_data(center_coords=settings.km2_coords, zoom=8):
+	location_list = db_utils.gather_locations(center=center_coords, max_distance=65)
+	
+	url_insertion = ''
+	counter = 0
+	
+	for i in location_list:
+		coords = i[3]
+		lat = coords[0]
+		lon = coords[1]
+		
+		url_piece = f'{lon},{lat},pm2blm~'
+		
+		if counter < 100:
+			url_insertion += url_piece
+			counter +=1
+	
+	edited_url_insertion = url_insertion[:-1]
+	
+	full_url = f'https://static-maps.yandex.ru/1.x/?ll={center_coords[1]},{center_coords[0]}&z={zoom}&size=600,400&l=map&pt={edited_url_insertion}&lang=en_US'
+	
+	response = requests.get(full_url)
+	#print(response.status_code)
+
+	img = Image.open(BytesIO(response.content))
+	img.show()
+	
+	
 
 def build_analysis(rtm='chris'):
 	date_list = db_utils.get_all_dates()
@@ -115,5 +147,8 @@ if 'analysis' in sys.modules:
 if __name__ == '__main__':
 	
 	#a = build_analysis()
-	pass
-
+	orlando_coords = (28.538336, -81.379234)
+	atlanta_coords = (33.7501, -84.3885)
+	roanoke_coords = (37.270969, -79.941429)
+	chesapeake_coords = (36.779591, -76.288376)
+	build_location_data()

@@ -10,26 +10,49 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Now you can import settings
 import settings
+def db_connection():
+	# returns a db connection
+	dbName = settings.DB_PATH
+	conn = sqlite3.connect(dbName)
+	return conn
 
-'''
-List of functions
------------------
-
-find_names_and_ids
-store_json_data
-build_analysisStorage_tbl
-build_imgStorage_tbl
-get_manager
-get_max_date
-get_all_dates
-gather_driver_ids
-gather_driver_data
-gather_historical_driver_data
-print_driver_info
-idr_driver_data
-verify_driver_id
-
-'''
+def gather_locations(center=settings.km2_coords, max_distance=50):
+	conn = db_connection()
+	c = conn.cursor()
+	
+	sql = f'SELECT url, location FROM {settings.speedGaugeData}'
+	c.execute(sql)
+	results = c.fetchall()
+	
+	filtered_results = [
+		result for result in results
+		if result[0] not in (None, '-')
+		and result[1] not in (None, '-')
+		]
+	
+	conn.close()
+	
+	valid_locations = []
+	
+	for result in filtered_results:
+		url = result[0]
+		location = result[1]
+		
+		url_coords = settings.extract_coordinates(url)
+		
+		distance_from_center = settings.haversine(url_coords[0], url_coords[1], center[0], center[1])
+		
+		if distance_from_center <= max_distance:
+			final_result = [
+				i for i in result
+				]
+			final_result.append(distance_from_center)
+			final_result.append(url_coords)
+			valid_locations.append(final_result)
+	
+	sorted_locations = sorted(valid_locations, key=lambda x: x[2])
+	
+	return sorted_locations
 
 def find_names_and_ids(rtm='chris'):
 	conn = settings.db_connection()
@@ -405,5 +428,5 @@ def verify_driver_id(driver_id):
 
 if __name__ == '__main__':
 	#build_analysisStorage_tbl()
-	pass
+	gather_locations()
 	#idr_driver_data()

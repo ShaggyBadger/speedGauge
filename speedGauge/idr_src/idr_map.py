@@ -6,13 +6,14 @@ import settings
 import requests
 import re
 import math
+import statistics
 from src import db_utils
 from PIL import Image
 import PIL.Image as Image
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-def construct_img_name(driver_id, date):
+def construct_img_name(driver_id, date, all_locations=False):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	sql = f'SELECT formated_start_date FROM {settings.speedGaugeData} WHERE start_date = ?'
@@ -26,8 +27,11 @@ def construct_img_name(driver_id, date):
 	chart_dir = settings.MAP_PATH / dir_name / subdir_name
 	chart_dir.mkdir(parents=True, exist_ok=True)
 	
-	img_name = f'{driver_id}_map.png'
-	img_path = chart_dir / img_name
+	if all_locations is Fale:
+		img_name = f'{driver_id}_map.png'
+		img_path = chart_dir / img_name
+	else:
+		img_name = f'{driver_id}_full_map.png'
 	
 	return img_path
 
@@ -215,7 +219,7 @@ def temp(coord_list, baseMap_path):
 	
 	plt.show()
 
-def save_img_blob(driver_id, date, img):
+def save_img_blob(driver_id, date, img, column='speed_map'):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
@@ -223,7 +227,7 @@ def save_img_blob(driver_id, date, img):
 	img.save(img_byte_arr, format='PNG')
 	img_blob = img_byte_arr.getvalue()
 	
-	sql = f'UPDATE {settings.speedGaugeData} SET speed_map = ? WHERE driver_id = ? AND start_date = ?'
+	sql = f'UPDATE {settings.speedGaugeData} SET {column} = ? WHERE driver_id = ? AND start_date = ?'
 	values = (img_blob, driver_id, date)
 	
 	c.execute(sql, values)
@@ -238,11 +242,48 @@ def get_map(url, date, driver_id):
 	
 	return img
 
+def get_full_map(coord_list, zoom=8):
+	lat_list = [
+		coord[0] for coord in coord_list
+		]
+	lon_list = [
+		coord[1] for coord in coord_list
+		]
+		
+	center_lat = statistics.mean(lat_list)
+	center_lon = statistics.mean(lon_list)
+	
+	url_insertion = ''
+	counter = 0
+	
+	for coord in coord_list:
+		lat = coord[0]
+		lon = coord[1]
+		
+		url_piece = f'{lon},{lat},pm2blm~'
+		
+		if counter < 100:
+			url_insertion += url_piece
+			counter +=1
+	
+	# cut last ~ out of insertion
+	edited_url_insertion = url_insertion[:-1]
+	
+	# build url
+	full_url = f'https://static-maps.yandex.ru/1.x/?ll={center_lon},{center_lat}&z={zoom}&size=600,400&l=map&pt={edited_url_insertion}&lang=en_US'
+	
+	response = requests.get(full_url)
+	#print(response.status_code)
+
+	img = Image.open(BytesIO(response.content))
+	img.show()
+	return img
+
 def controller(driver_id, overwrite_img=False):
 	conn = settings.db_connection()
 	c = conn.cursor()
 	
-	sql = f'SELECT url, speed_map, start_date FROM {settings.speedGaugeData} WHERE driver_id = ?'
+	sql = f'SELECT url, speed_map, start_date, full_speed_map FROM {settings.speedGaugeData} WHERE driver_id = ? ORDER BY start_date'
 	value = (driver_id,)
 	c.execute(sql, value)
 	results = c.fetchall()
@@ -264,10 +305,21 @@ def controller(driver_id, overwrite_img=False):
 		url = result[0]
 		speed_map = result[1]
 		date = result[2]
+		full_speed_map = result[3]
 		
 		if speed_map is None or overwrite_img is True:
 			img = get_map(url, date, driver_id)
 			save_img_blob(driver_id, date, img)
+		
+		if full_speed_map is None or overwrite_img is True:
+			# build full map
+			coord_list = [
+				extract_coordinates(result[0]) for result
+				in second_filter
+				]
+				
+			img = get_full_map(coord_list)
+			save_img_blob(driver_id, date, img, column='full_speed_map')
 		
 	
 	
@@ -287,6 +339,6 @@ def build_full_map():
 	
 
 if __name__ == '__main__':
-	controller(30190385)
+	controller(30150643)
 	
 	#url = f"https://static-maps.yandex.ru/1.x/?ll={lon_center},{lat_center}&z={zoom}&size=600,400&l=map&pt={lon_center},{lat_center},pm2blm&lang=en_US"

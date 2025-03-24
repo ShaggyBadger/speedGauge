@@ -3,6 +3,8 @@ import os
 import sys
 import importlib
 import sqlite3
+import re
+import math
 from pathlib import Path
 
 
@@ -84,7 +86,8 @@ mainTbl_column_info = {
 	'human_readable_start_date': 'TEXT',
 	'human_readable_end_date': 'TEXT',
 	'percent_speeding_source': 'TEXT',
-	'speed_map': 'BLOB'
+	'speed_map': 'BLOB',
+	'full_speed_map': 'BLOB'
 	}
 
 imgStorageTbl_column_info = {
@@ -122,11 +125,55 @@ imgStorage = 'imgStorage'
 analysisStorage = 'analysisStorage'
 
 # super common call. put this here so everyone can use it
+# km2 lat and lon
+km2_coords = 36.0750039, -79.9345196
+
+
+# super common call. put this here so everyone can use it
 def db_connection():
 	# returns a db connection
 	dbName = DB_PATH
 	conn = sqlite3.connect(dbName)
 	return conn
+
+def haversine(lat1, lon1, lat2, lon2):
+	"""
+	Calculates the great-circle distance between two points on the Earth 
+	using the Haversine formula.
+	
+	Args:
+		lat1, lon1: Latitude and longitude of the first point in decimal degrees.
+		lat2, lon2: Latitude and longitude of the second point in decimal degrees.
+		
+	Returns:
+		Distance between the two points in kilometers.
+		"""
+	R = 6371  # Radius of Earth in kilometers
+	
+	# Convert latitude and longitude from degrees to radians
+	lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+	
+	# Haversine formula
+	dlat = lat2 - lat1
+	dlon = lon2 - lon1
+	a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+	c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+	
+	distance_km = R * c
+	distance_miles = distance_km * 0.621371
+	
+	return distance_miles
+
+def extract_coordinates(url):
+	pattern = r"la=([-.\d]+)&lo=([-.\d]+)"
+	match = re.search(pattern, url)
+	if match:
+		lat = float(match.group(1))
+		lon = float(match.group(2))
+		return lat, lon
+	
+	else:
+		return None
 
 # auto-reload settings module to prevent cache issues
 if 'settings' in sys.modules:
