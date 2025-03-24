@@ -546,7 +546,7 @@ def create_overview_frame(data_packet):
 	
 	driver_id = cur_driver_data['driver_id']
 	
-	sql = f'SELECT speed_map, location, human_readable_start_date, speed_limit, speed FROM {settings.speedGaugeData} WHERE driver_id = ? AND speed_map NOT NULL ORDER BY start_date ASC'
+	sql = f'SELECT speed_map, location, human_readable_start_date, speed_limit, speed, full_speed_map FROM {settings.speedGaugeData} WHERE driver_id = ? AND speed_map NOT NULL ORDER BY start_date ASC'
 	value = (driver_id,)
 	c.execute(sql, value)
 	results = c.fetchall()
@@ -569,11 +569,27 @@ def create_overview_frame(data_packet):
 	
 	# only put table in if there are entries in it
 	if len(results) > 0:
+		map_w = col3_w * 0.75
+		aspect_ratio = 2/3
+		map_h = map_w * aspect_ratio
+		
+		full_map_bytes = results[-1][5]
+		full_map_stream = BytesIO(full_map_bytes)
+		
+		full_map = Image(full_map_stream, width=map_w, height=map_h)
+		
+		full_map_text = Paragraph(
+			f'<font color={colors.antiquewhite} size=18><strong>General Map of Incident Locations</strong></font>', style=CenteredAligned
+			)
+		
+		map_tbl_data.append([
+			'',
+			full_map_text,
+			full_map,
+			''
+			])
+		
 		for result in results:
-			map_w = col3_w * 0.75
-			aspect_ratio = 2/3
-			map_h = map_w * aspect_ratio
-			
 			data_subtable = build_data_subtable(result)
 			
 			img_bytes = result[0]
@@ -602,7 +618,8 @@ def create_overview_frame(data_packet):
 		stat_tbl.setStyle([
 			('ALIGN', (0,0), (-1,-1), 'CENTER'),
 			('VALIGN', (0,0), (-1,-1), 'MIDDLE'),	
-			('ROWBACKGROUNDS', (1,0), (2,-1), ['#cad7f2'])
+			('ROWBACKGROUNDS', (1,1), (2,-1), ['#cad7f2']),
+			('BACKGROUND', (1,0), (2,0), settings.swto_blue)
 			])
 		
 		content.append(stat_tbl)
