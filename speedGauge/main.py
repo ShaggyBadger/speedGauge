@@ -91,8 +91,11 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 	
 	# build visualizations
 	#plt_paths = visualizations.retrieve_plts(driver_stats['date_list'][-1])
+	idr_visuals = idr_visualizations.controller(stats_package, driver_id)
+	
 	plt_paths = {
-		'driver_graph': idr_visualizations.controller(stats_package, driver_id)
+		'driver_graph': idr_visuals['avg_line_chart'],
+		'distance_driven_graph': idr_visuals['distance_driven_chart']
 	}
 	
 	# build map blobs in db

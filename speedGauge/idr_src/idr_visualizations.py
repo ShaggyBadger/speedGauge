@@ -246,7 +246,7 @@ def build_distance_line_chart(stats, stat_selection, rtm='chris'):
 	plt_type = f'distance_LineChart_{stat_selection.capitalize()}'
 	plt_path = save_plt(plt, dates[-1], plt_type, driver_stats['driver_id'])
 	
-	plt.show()
+	#plt.show()
 	plt.close()
 	plt.clf()
 	
@@ -271,6 +271,11 @@ def controller(stats, driver_id, rtm='chris'):
 	
 	distance_chart = build_distance_line_chart(stats, 'average', rtm='chris')
 	
-	return avg_plt_path
+	plt_package = {
+		'avg_line_chart': avg_plt_path,
+		'distance_driven_chart': distance_chart
+	}
+	
+	return plt_package
 	
 
