@@ -76,6 +76,7 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	
 	scatter_x = []
 	scatter_y = []
+	
 	for dict in driver_stats['driver_dicts']:
 		if dict['percent_speeding_source'] == 'generated':
 			scatter_x.append(dict['start_date'])
@@ -156,6 +157,101 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	
 	return plt_path
 
+def build_distance_line_chart(stats, stat_selection, rtm='chris'):
+	if stat_selection == 'average':
+		stat_function = statistics.mean
+	else:
+		stat_function = statistics.median
+	
+	rtm_stats = stats['rtm']
+	company_stats = stats['company']
+	driver_stats = stats['driver']
+	
+	dates = driver_stats['date_list']
+	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
+	
+	x_label = 'Date'
+	y_label = f'{stat_selection.capitalize()} Distance Driven'
+	title = f'Historical Distribution of {stat_selection.capitalize()} Distance Driven'
+	rtm_label = f'Rtm {stat_selection.capitalize()} Distance Driven'
+	company_label = f'Company {stat_selection.capitalize()} Distance Driven'
+	
+	company_line_data = []
+	rtm_line_data = []
+	driver_line_data = []
+	
+	for date in dates:	
+		target_dict = None
+		for dict in rtm_stats:
+			if dict['date'] == date:
+				distance_list = dict['distance_list']
+				rtm_line_data.append(round(stat_function(distance_list),2))
+		
+		for dict in company_stats:
+			if dict['date'] == date:
+				distance_list = dict['distance_list']
+				company_line_data.append(round(stat_function(distance_list),2))
+				
+		
+		for dict in driver_stats['driver_dicts']:
+			if dict['start_date'] == date:
+				distance_driven = dict['distance_driven']
+				
+				if distance_driven is not None:
+					driver_line_data.append(distance_driven)
+				else:
+					driver_line_data.append(0)
+		
+	plt.figure(constrained_layout=True)
+	#plt.figure(figsize=(6,2))
+	plt.tight_layout()
+
+	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='--', linewidth=1, zorder=2)
+	
+	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='--', linewidth=1, zorder=1)
+	
+	plt.plot(dates2, driver_line_data, label='Driver Distance', color='black', linestyle='-', linewidth=3, zorder=3)
+	
+	# Set major locator to one tick per month
+	plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+	
+	# Format the date labels to show the month and year (e.g., Jan 2024)
+	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+	
+	
+	# Rotate the labels for readability
+	plt.xticks(rotation=45)
+	
+	ax = plt.gca()
+	ax.yaxis.set_label_position("right")
+	ax.yaxis.tick_right()
+	
+	driver_distance_avg = round(statistics.mean(driver_line_data),2)
+	
+	plt.axhline(y=driver_distance_avg, color='red', linewidth=1, label=f'Driver {stat_selection.capitalize()} distance: {driver_distance_avg}')
+	#ax.set_title(title, fontsize=8)
+	#ax.legend(["Line 1"], fontsize=8, loc="upper left", bbox_to_anchor=(1, 1))
+	
+	# Automatically adjust layout to avoid clipping
+	#plt.tight_layout()
+	#plt.subplots_adjust(bottom=0.15, left=0.15)  # Adjust bottom and left margins
+	
+	plt.xlabel(x_label)
+	plt.ylabel(y_label)
+	plt.title(title)
+	plt.legend()
+	#plt.figure(figsize=(6,4))
+	#plt.tight_layout()
+	
+	plt_type = f'distance_LineChart_{stat_selection.capitalize()}'
+	plt_path = save_plt(plt, dates[-1], plt_type, driver_stats['driver_id'])
+	
+	plt.show()
+	plt.close()
+	plt.clf()
+	
+	return plt_path
+
 def controller(stats, driver_id, rtm='chris'):
 	rtm_stats = stats['rtm']
 	company_stats = stats['company']
@@ -172,6 +268,9 @@ def controller(stats, driver_id, rtm='chris'):
 	'''build line charts'''
 	avg_plt_path = build_line_chart(stats, 'average', rtm='chris')
 	#median_plt_path = build_line_chart(stats, 'median', rtm='chris')
+	
+	distance_chart = build_distance_line_chart(stats, 'average', rtm='chris')
+	
 	return avg_plt_path
 	
 

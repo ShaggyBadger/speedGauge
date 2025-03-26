@@ -74,6 +74,8 @@ def build_analysis(rtm='chris'):
 	# make list of dicts. key is date, value is filtered speed_list
 	rtm_data = []
 	company_data = []
+	rtm_distances = []
+	company_distances = []
 	
 	# build filtered speed list for company and rtm for each date
 	for date in date_list:
@@ -83,6 +85,8 @@ def build_analysis(rtm='chris'):
 		rtm_spd_lst = filter_speed_list([dict['percent_speeding'] for dict in rtm_drivers])
 		rtm_avg = round(statistics.mean(rtm_spd_lst), 2)
 		rtm_median = round(statistics.median(rtm_spd_lst), 2)
+		
+
 		
 		if len(rtm_data) == 0:
 			rtm_avg_percent_change = get_percent_change(rtm_avg, 0)
@@ -104,6 +108,21 @@ def build_analysis(rtm='chris'):
 			company_avg_percent_change = get_percent_change(company_avg, prev_company_avg)
 			company_avg_abs_change = company_avg - prev_company_avg
 		
+		rtm_distances = [
+			dict['distance_driven'] for dict in rtm_drivers
+			if isinstance(dict['distance_driven'], (int, float))
+			]
+		
+		company_distances = [
+			dict['distance_driven'] for dict in company_drivers
+			if isinstance(dict['distance_driven'], (int, float))
+			]
+		
+		if len(rtm_distances) == 0:
+			rtm_distances.append(0)
+		if len(company_distances) == 0:
+			company_distances.append(0)
+		
 		rtm_data.append(
 			{
 				'date': date,
@@ -112,10 +131,12 @@ def build_analysis(rtm='chris'):
 				'average': rtm_avg,
 				'median': rtm_median,
 				'avg_percent_change': round(rtm_avg_percent_change,2),
-				'avg_abs_change': round(rtm_avg_abs_change, 2)
+				'avg_abs_change': round(rtm_avg_abs_change, 2),
+				'avg_distance_driven': round(statistics.mean(rtm_distances), 2),
+				'distance_list': rtm_distances
 			}
 		)
-		
+
 		company_data.append(
 			{
 				'date': date,
@@ -123,7 +144,9 @@ def build_analysis(rtm='chris'):
 				'average': company_avg,
 				'median': company_median,
 				'avg_percent_change': round(company_avg_percent_change, 2),
-				'avg_abs_change': round(company_avg_abs_change, 2)
+				'avg_abs_change': round(company_avg_abs_change, 2),
+				'avg_distance_driven': round(statistics.mean(company_distances), 2),
+				'distance_list': company_distances
 			}
 		)
 	

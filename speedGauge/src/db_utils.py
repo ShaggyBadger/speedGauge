@@ -245,7 +245,7 @@ def gather_driver_data(id_list, date):
 	c = conn.cursor()
 	
 	for driver_id in id_list:
-		sql = f'SELECT driver_name, percent_speeding FROM {tbl} where driver_id = ? AND start_date = ?'
+		sql = f'SELECT driver_name, percent_speeding, distance_driven FROM {tbl} where driver_id = ? AND start_date = ?'
 		values = (driver_id, date)
 		
 		c.execute(sql, values)
@@ -254,11 +254,13 @@ def gather_driver_data(id_list, date):
 		if result != None:
 			driver_name = result[0]
 			percent_speeding = result[1]
+			distance_driven = result[2]
 			
 			data_packet = {
 				'driver_id': driver_id,
 				'percent_speeding': percent_speeding,
-				'driver_name': driver_name
+				'driver_name': driver_name,
+				'distance_driven': distance_driven
 			}
 			
 			data_packets.append(data_packet)

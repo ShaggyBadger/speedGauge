@@ -231,7 +231,86 @@ def build_line_chart(stats, stat_selection, rtm='chris'):
 	plt.clf()
 	
 	return plt_path
+
+def build_distance_line_chart(stats, stat_selection, rtm='chris'):
+	if stat_selection == 'average':
+		stat_function = statistics.mean
+	else:
+		stat_function = statistics.median
 	
+	rtm_stats = stats['rtm']
+	company_stats = stats['company']
+	
+	dates = db_utils.get_all_dates()
+	dates2 = [datetime.strptime(date, '%Y-%m-%d %H:%M') for date in dates]
+	
+	x_label = 'Date'
+	y_label = f'{stat_selection.capitalize()} Distance Driven'
+	title = f'Historical Distribution of {stat_selection.capitalize()} Distance Driven'
+	rtm_label = f'Rtm {stat_selection.capitalize()}'
+	company_label = f'Company {stat_selection.capitalize()}'
+	
+	company_line_data = []
+	rtm_line_data = []
+	
+	for date in dates:	
+		target_dict = None
+		for dict in rtm_stats:
+			if dict['date'] == date:
+				distance_list = dict['distance_list']
+				rtm_line_data.append(round(stat_function(distance_list),2))
+		
+		for dict in company_stats:
+			if dict['date'] == date:
+				distance_list = dict['distance_list']
+				company_line_data.append(round(stat_function(distance_list),2))
+		
+	plt.figure(constrained_layout=True)
+	#plt.figure(figsize=(6,2))
+	plt.tight_layout()
+
+	plt.plot(dates2, rtm_line_data, label=rtm_label, color=settings.swto_blue, linestyle='-', linewidth=3)
+	
+	plt.plot(dates2, company_line_data, label=company_label, color='green', linestyle='-', linewidth=3)
+	
+	if stat_selection == 'average':
+		plt.axhline(y=0.4, color='red', linewidth=1, label='percent_speeding Objective: 0.4%')
+	
+	# Set major locator to one tick per month
+	plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+	
+	# Format the date labels to show the month and year (e.g., Jan 2024)
+	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+	
+	
+	# Rotate the labels for readability
+	plt.xticks(rotation=45)
+	
+	ax = plt.gca()
+	ax.yaxis.set_label_position("right")
+	ax.yaxis.tick_right()
+	#ax.set_title(title, fontsize=8)
+	#ax.legend(["Line 1"], fontsize=8, loc="upper left", bbox_to_anchor=(1, 1))
+	
+	# Automatically adjust layout to avoid clipping
+	#plt.tight_layout()
+	#plt.subplots_adjust(bottom=0.15, left=0.15)  # Adjust bottom and left margins
+	
+	plt.xlabel(x_label)
+	plt.ylabel(y_label)
+	plt.title(title)
+	plt.legend()
+	#plt.figure(figsize=(6,4))
+	#plt.tight_layout()
+	
+	plt_type = f'distance_LineChart_{stat_selection.capitalize()}'
+	plt_path = save_plt(plt, dates[-1], plt_type)
+	
+	plt.show()
+	plt.close()
+	plt.clf()
+	
+	return plt_path
 	
 def build_percent_change_line_chart(stats, rtm='chris'):
 	
@@ -315,11 +394,17 @@ def controller(stats, rtm='chris'):
 	avg_plt_path = build_line_chart(stats, 'average', rtm='chris')
 	median_plt_path = build_line_chart(stats, 'median', rtm='chris')
 	
+	'''build distance line chart'''
+	avg_distance_chart_path = build_distance_line_chart(stats, 'average')
+	median_distance_chart_path = build_distance_line_chart(stats, 'median')
+	
 	plt_paths = {
 		'rtm_histo_path': rtm_histo_path,
 		'company_histo_path': company_histo_path,
 		'avg_plt_path': avg_plt_path,
-		'median_plt_path': median_plt_path
+		'median_plt_path': median_plt_path,
+		'avg_distance_plt_path': avg_distance_chart_path,
+		'median_distance_plt_path': median_distance_chart_path
 	}
 	
 	return plt_paths
@@ -343,7 +428,8 @@ if __name__ == '__main__':
 	#build_histogram(stats, 'chris')
 	#build_histogram(stats, 'company')
 	#build_scatter(stats)
-	build_line_chart(stats, 'average', rtm='chris')
+	#build_line_chart(stats, 'average', rtm='chris')
+	controller(stats)
 	#build_percent_change_line_chart(stats)
 	#all_chart_styles(stats)
 

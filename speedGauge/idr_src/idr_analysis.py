@@ -99,6 +99,17 @@ def idr_analytics(driver_dicts, driver_id, general_stats):
 		dict['percent_speeding'] for dict in driver_dicts
 		]
 	
+	distance_driven_list = [
+		dict['distance_driven'] for dict in driver_dicts
+		]
+	
+	# clear out None entries
+	adjusted_distance_driven_list = [
+		d if d is not None
+		else 0 for d
+		in distance_driven_list
+		]
+	
 	# get list of incident locations
 	incident_locations = [
 		dict['location']
@@ -129,7 +140,8 @@ def idr_analytics(driver_dicts, driver_id, general_stats):
 		'avg': round(avg, 2),
 		'median': round(median, 2),
 		'mode': round(mode, 2),
-		'slope': round(slope, 2)
+		'slope': round(slope, 2),
+		'distance_driven_list': adjusted_distance_driven_list
 	}
 	
 	return stats
@@ -144,8 +156,6 @@ if __name__ == '__main__':
 	general_stats = analysis.build_analysis()
 	
 	a = idr_analytics(driver_dicts, driver_id, general_stats)
-	
-	print(a)
 	
 	pass
 	
