@@ -16,6 +16,45 @@ def db_connection():
 	conn = sqlite3.connect(dbName)
 	return conn
 
+def build_driver_data_json():
+	'''
+	builds a json file with driver first and last name as well as driver id. puts the file in the data directory
+	'''
+	conn = db_connection()
+	c = conn.cursor()
+	driver_dict_list = []
+	
+	sql = f'''
+	SELECT DISTINCT 
+		driver_name,
+		driver_id
+	FROM {settings.driverInfo}
+	'''
+	c.execute(sql)
+	result = c.fetchall()
+	for i in result:
+		name = i[0]
+		driver_id = i[1]
+		
+		parts = name.strip().split()
+		fname = parts[0]
+		lname = parts[-1]
+		
+		driver_dict = {
+			'driver_id': driver_id,
+			'first_name': fname,
+			'last_name': lname
+		}
+		
+		driver_dict_list.append(driver_dict)
+	
+	conn.close()
+	
+	import json
+	file_path = settings.DATA_PATH / 'drivers.json'
+	with open(file_path, 'w') as f:
+		json.dump(driver_dict_list, f, indent=2)
+
 def gather_locations(center=settings.km2_coords, max_distance=50):
 	conn = db_connection()
 	c = conn.cursor()
@@ -430,5 +469,6 @@ def verify_driver_id(driver_id):
 
 if __name__ == '__main__':
 	#build_analysisStorage_tbl()
-	gather_locations()
+	#gather_locations()
 	#idr_driver_data()
+	build_driver_data_json()

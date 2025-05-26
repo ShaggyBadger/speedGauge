@@ -54,7 +54,8 @@ def idr(enter_driver=True, driver_id=30150643, stats_package=None):
 		1152694: 'charles',
 		30202984: 'john r',
 		30190385: 'travis',
-		30150643: 'me'
+		30150643: 'me',
+		30097394: 'Jayson Ruiz'
 	}
 	
 	if enter_driver is True:
@@ -163,7 +164,10 @@ def run_program():
 			30186711: 'ingram',
 			30055670: 'david heath',
 			30110871: 'Donald Howell',
-			30227642: 'Oscar'
+			30227642: 'Oscar',
+			5053272: 'David Thompson',
+			32010202: 'amber shepp',
+			30097394: 'Jayson Ruiz'
 		}
 		
 		stats = analysis.build_analysis()
