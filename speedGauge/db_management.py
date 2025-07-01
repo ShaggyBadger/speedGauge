@@ -122,6 +122,73 @@ def controller():
 		console.clear()
 	
 	conn.close()
+
+def delete_rows_by_date():
+	'''
+	function that will print out list of dates, then user selects the date they want to remove from db 
+	
+	then this will go and grab each record for the selected date and deleye them
+	
+	use? sometimes my moron boss provides an extra spreadsheet so i want to delete old records and update with new ones
+	'''
+	conn = settings.db_connection()
+	c = conn.cursor()
+	
+	sql = f'''
+	SELECT DISTINCT human_readable_start_date
+	FROM {settings.speedGaugeData}
+	ORDER BY start_date DESC
+	'''
+	c.execute(sql)
+	dates = c.fetchall()
+	
+	counter = 1
+	date_dict = {}
+	for date in dates:
+		date_dict[counter] = date[0]
+		counter += 1
+	
+	for i in date_dict:
+		print(i, ': ', date_dict[i])
+	
+	selection = int(input('\nSelect which date to delete...'))
+	
+	console.clear()
+	
+	print(f'Selected date: {date_dict[selection]}')
+	confirmation = input('Delete all records for this date? y/n\n\n')
+	
+	if confirmation.lower() == 'y':
+		print(f'Deleting all records for {date_dict[selection]} in 5 seconds. you still have time to exit the program before this happens!!!')
+		import time
+		time.sleep(5)
+		
+		sql = f'''
+		DELETE FROM {settings.speedGaugeData}
+		WHERE human_readable_start_date = ?
+		'''
+		value = (date_dict[selection],)
+		c.execute(sql, value)
+		results = c.fetchall()
+		
+		console.clear()
+		print('Verifying deletion. Standby...\n')
+		sql = f'''
+		SELECT *
+		FROM {settings.speedGaugeData}
+		WHERE human_readable_start_date = ?
+		'''
+		value = (date_dict[selection],)
+		c.execute(sql, value)
+		results = c.fetchall()
+		print(f'Number of records for date {date_dict[selection]}: {len(results)}')
+		if len(results) > 0:
+			for i in results:
+				print(i, '\n')
+	print('Program complete. Terminating.')
+	
+	conn.commit()
+	conn.close()
 	
 if __name__ == '__main__':
-	temp()
+	pass
